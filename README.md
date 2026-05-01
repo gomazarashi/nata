@@ -50,3 +50,7 @@ nata extract input.pdf --pages odd -o out.pdf
 - 既存の出力先は、`--overwrite`を指定しない限り上書きしません。
 - 処理失敗時に壊れた出力ファイルを残さないよう、一時ファイル経由で出力します。
 - ページ番号は1始まりです。
+
+## License
+
+MIT License
