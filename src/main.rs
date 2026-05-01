@@ -1,6 +1,8 @@
 mod cli;
 mod error;
 mod exit_code;
+mod io_support;
+mod page_spec;
 mod qpdf_detector;
 
 use clap::Parser;
