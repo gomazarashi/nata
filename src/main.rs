@@ -3,6 +3,7 @@ mod error;
 mod extract;
 mod exit_code;
 mod io_support;
+mod merge;
 mod page_spec;
 mod qpdf_detector;
 mod qpdf_runner;
@@ -51,6 +52,7 @@ fn try_run(cli: Cli) -> Result<(), AppError> {
     }
 
     match cli.command {
+        Commands::Merge(args) => merge::run(args, &qpdf),
         Commands::Extract(args) => extract::run(args, &qpdf),
         command => Err(AppError::General(format!(
             "command {:?} is not implemented yet",

@@ -29,7 +29,7 @@ pub struct CommonOptions {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    Merge,
+    Merge(MergeArgs),
     Extract(ExtractArgs),
     Remove,
     Reorder,
@@ -37,6 +37,18 @@ pub enum Commands {
     Replace,
     Split,
     Rotate,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct MergeArgs {
+    #[arg(required = true)]
+    pub inputs: Vec<PathBuf>,
+
+    #[arg(short = 'o', long, value_name = "file")]
+    pub output: PathBuf,
+
+    #[arg(long)]
+    pub overwrite: bool,
 }
 
 #[derive(Debug, Clone, Args)]

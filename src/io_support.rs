@@ -67,6 +67,7 @@ impl PendingOutput {
         self.temp_path.as_ref()
     }
 
+    #[cfg(test)]
     pub fn write_all(&mut self, contents: &[u8]) -> Result<(), AppError> {
         fs::write(self.temp_path(), contents).map_err(|source| AppError::TempOutputCreateFailed {
             path: self.final_path.clone(),

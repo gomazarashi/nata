@@ -27,6 +27,9 @@ pub enum AppError {
         detail: String,
     },
 
+    #[error("error: merge requires at least two input PDFs")]
+    MergeRequiresAtLeastTwoInputs,
+
     #[error("error: input PDF was not found: {path}")]
     InputPdfNotFound { path: PathBuf },
 
@@ -89,7 +92,8 @@ impl AppError {
             | Self::PageOutOfRange { .. }
             | Self::OddEvenNotAllowed
             | Self::SinglePageRequired
-            | Self::EmptyPageSelection => ExitCode::CliArgumentError,
+            | Self::EmptyPageSelection
+            | Self::MergeRequiresAtLeastTwoInputs => ExitCode::CliArgumentError,
         }
     }
 }
