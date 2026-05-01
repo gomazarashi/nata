@@ -4,6 +4,7 @@ mod exit_code;
 mod qpdf_detector;
 
 use clap::Parser;
+use clap::error::ErrorKind;
 
 use crate::cli::Cli;
 use crate::error::AppError;
@@ -14,7 +15,19 @@ fn main() {
 }
 
 fn run() -> ExitCode {
-    match try_run() {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(error) => {
+            let exit_code = match error.kind() {
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => ExitCode::Success,
+                _ => ExitCode::CliArgumentError,
+            };
+            let _ = error.print();
+            return exit_code;
+        }
+    };
+
+    match try_run(cli) {
         Ok(()) => ExitCode::Success,
         Err(error) => {
             eprintln!("{error}");
@@ -23,8 +36,7 @@ fn run() -> ExitCode {
     }
 }
 
-fn try_run() -> Result<(), AppError> {
-    let cli = Cli::parse();
+fn try_run(cli: Cli) -> Result<(), AppError> {
     let qpdf_path = qpdf_detector::detect(cli.common.qpdf.as_deref())?;
 
     if cli.common.verbose && !cli.common.quiet {
