@@ -15,11 +15,26 @@ pub enum AppError {
     #[error("error: qpdf executable is not executable: {path}")]
     QpdfNotExecutable { path: PathBuf },
 
+    #[error("error: qpdf execution failed during {operation}: {source}")]
+    QpdfExecutionFailed {
+        operation: String,
+        source: std::io::Error,
+    },
+
+    #[error("error: qpdf command failed during {operation}: {detail}")]
+    QpdfCommandFailed {
+        operation: String,
+        detail: String,
+    },
+
     #[error("error: input PDF was not found: {path}")]
     InputPdfNotFound { path: PathBuf },
 
     #[error("error: input PDF is not a file: {path}")]
     InputPdfNotFile { path: PathBuf },
+
+    #[error("error: input PDF is not readable as PDF: {path}\ndetail: {detail}")]
+    InputPdfInvalid { path: PathBuf, detail: String },
 
     #[error("error: output file already exists: {path}")]
     OutputAlreadyExists { path: PathBuf },
@@ -59,8 +74,13 @@ impl AppError {
     pub fn exit_code(&self) -> ExitCode {
         match self {
             Self::General(_) => ExitCode::GeneralError,
-            Self::QpdfNotFound | Self::QpdfNotExecutable { .. } => ExitCode::BackendError,
-            Self::InputPdfNotFound { .. } | Self::InputPdfNotFile { .. } => ExitCode::InputPdfError,
+            Self::QpdfNotFound
+            | Self::QpdfNotExecutable { .. }
+            | Self::QpdfExecutionFailed { .. }
+            | Self::QpdfCommandFailed { .. } => ExitCode::BackendError,
+            Self::InputPdfNotFound { .. }
+            | Self::InputPdfNotFile { .. }
+            | Self::InputPdfInvalid { .. } => ExitCode::InputPdfError,
             Self::OutputAlreadyExists { .. }
             | Self::OutputDirectoryNotFound { .. }
             | Self::TempOutputCreateFailed { .. }

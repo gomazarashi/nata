@@ -1,16 +1,20 @@
 mod cli;
 mod error;
+mod extract;
 mod exit_code;
 mod io_support;
 mod page_spec;
 mod qpdf_detector;
+mod qpdf_runner;
 
 use clap::Parser;
 use clap::error::ErrorKind;
 
 use crate::cli::Cli;
+use crate::cli::Commands;
 use crate::error::AppError;
 use crate::exit_code::ExitCode;
+use crate::qpdf_runner::QpdfRunner;
 
 fn main() {
     std::process::exit(run().code());
@@ -40,13 +44,17 @@ fn run() -> ExitCode {
 
 fn try_run(cli: Cli) -> Result<(), AppError> {
     let qpdf_path = qpdf_detector::detect(cli.common.qpdf.as_deref())?;
+    let qpdf = QpdfRunner::new(qpdf_path.clone());
 
     if cli.common.verbose && !cli.common.quiet {
         eprintln!("info: using qpdf at {}", qpdf_path.display());
     }
 
-    Err(AppError::General(format!(
-        "command {:?} is not implemented yet",
-        cli.command
-    )))
+    match cli.command {
+        Commands::Extract(args) => extract::run(args, &qpdf),
+        command => Err(AppError::General(format!(
+            "command {:?} is not implemented yet",
+            command
+        ))),
+    }
 }

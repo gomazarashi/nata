@@ -30,11 +30,25 @@ pub struct CommonOptions {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     Merge,
-    Extract,
+    Extract(ExtractArgs),
     Remove,
     Reorder,
     Insert,
     Replace,
     Split,
     Rotate,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ExtractArgs {
+    pub input: PathBuf,
+
+    #[arg(long, value_name = "pages")]
+    pub pages: String,
+
+    #[arg(short = 'o', long, value_name = "file")]
+    pub output: PathBuf,
+
+    #[arg(long)]
+    pub overwrite: bool,
 }
