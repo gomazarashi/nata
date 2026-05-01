@@ -8,6 +8,16 @@ PDFの内容を再レンダリングするのではなく、既存PDFのペー�
 
 `nata`の利用には`qpdf`が必要です。`nata`自体は`qpdf`を同梱せず、`--qpdf`、`NATA_QPDF`、`PATH`の順で使用する実行ファイルを検出します。
 
+## インストール
+
+現時点では、リポジトリを取得した上で次のようにインストールします。
+
+```bash
+cargo install --path .
+```
+
+インストール後は`nata`コマンドとして実行できます。インストールせずに試す場合は、このリポジトリ直下で`cargo run -- <command> [options]`を実行してください。
+
 ## 現在使えるコマンド
 
 - `merge`: 複数のPDFを結合する
@@ -26,6 +36,10 @@ PDFの内容を再レンダリングするのではなく、既存PDFのペー�
 
 ```bash
 nata <command> [options]
+```
+
+```bash
+cargo run -- <command> [options]
 ```
 
 ### merge
