@@ -44,7 +44,6 @@ nata <command> [options]
 
 - `-o, --output <file>`: 単一 PDF の出力先
 - `--overwrite`: 既存の出力先を上書きする
-- `--strict`: 維持できない情報を検出した場合にエラーにする
 - `--quiet`: 通常メッセージを抑制する
 - `--verbose`: 詳細ログを出力する
 - `--qpdf <path>`: 使用する `qpdf` のパスを明示する

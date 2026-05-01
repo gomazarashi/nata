@@ -18,9 +18,6 @@ pub struct CommonOptions {
     pub qpdf: Option<PathBuf>,
 
     #[arg(long, global = true)]
-    pub strict: bool,
-
-    #[arg(long, global = true)]
     pub quiet: bool,
 
     #[arg(long, global = true)]

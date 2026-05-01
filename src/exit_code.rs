@@ -6,7 +6,6 @@ pub enum ExitCode {
     InputPdfError = 3,
     OutputFileError = 4,
     BackendError = 5,
-    StrictViolation = 6,
 }
 
 impl ExitCode {
