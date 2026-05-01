@@ -23,7 +23,7 @@ cargo install --path .
 - `merge`: 複数のPDFを結合する
 - `extract`: 指定ページを取り出す
 
-## 予定しているコマンド
+## 今後追加予定のコマンド
 
 - `remove`: 指定ページを削除する
 - `reorder`: 指定順にページを並べ替える

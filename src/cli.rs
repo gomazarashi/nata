@@ -31,12 +31,6 @@ pub struct CommonOptions {
 pub enum Commands {
     Merge(MergeArgs),
     Extract(ExtractArgs),
-    Remove,
-    Reorder,
-    Insert,
-    Replace,
-    Split,
-    Rotate,
 }
 
 #[derive(Debug, Clone, Args)]
