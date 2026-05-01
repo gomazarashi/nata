@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use tempfile::NamedTempFile;
+use tempfile::{Builder, TempPath};
 
 use crate::error::AppError;
 
@@ -42,29 +42,33 @@ pub fn prepare_single_output(path: &Path, overwrite: bool) -> Result<PendingOutp
     validate_single_output(path, overwrite)?;
 
     let parent = output_parent_dir(path)?;
-    let temp_file = NamedTempFile::new_in(parent).map_err(|source| AppError::TempOutputCreateFailed {
-        path: path.to_path_buf(),
-        source,
-    })?;
+    let temp_path = Builder::new()
+        .prefix(".nata-")
+        .tempfile_in(parent)
+        .map_err(|source| AppError::TempOutputCreateFailed {
+            path: path.to_path_buf(),
+            source,
+        })?
+        .into_temp_path();
 
     Ok(PendingOutput {
         final_path: path.to_path_buf(),
-        temp_file,
+        temp_path,
     })
 }
 
 pub struct PendingOutput {
     final_path: PathBuf,
-    temp_file: NamedTempFile,
+    temp_path: TempPath,
 }
 
 impl PendingOutput {
     pub fn temp_path(&self) -> &Path {
-        self.temp_file.path()
+        self.temp_path.as_ref()
     }
 
     pub fn write_all(&mut self, contents: &[u8]) -> Result<(), AppError> {
-        fs::write(self.temp_file.path(), contents).map_err(|source| AppError::TempOutputCreateFailed {
+        fs::write(self.temp_path(), contents).map_err(|source| AppError::TempOutputCreateFailed {
             path: self.final_path.clone(),
             source,
         })
@@ -73,10 +77,17 @@ impl PendingOutput {
     pub fn finalize(self) -> Result<PathBuf, AppError> {
         let PendingOutput {
             final_path,
-            temp_file,
+            temp_path,
         } = self;
 
-        temp_file
+        if final_path.exists() {
+            fs::remove_file(&final_path).map_err(|source| AppError::OutputFinalizeFailed {
+                path: final_path.clone(),
+                source,
+            })?;
+        }
+
+        temp_path
             .persist(&final_path)
             .map(|_| final_path.clone())
             .map_err(|error| AppError::OutputFinalizeFailed {
