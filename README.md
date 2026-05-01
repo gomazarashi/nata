@@ -1,7 +1,7 @@
 # nata
 
-`nata` is a planned Rust CLI tool for page-level PDF editing.
+`nata` は、PDF をページ単位で編集する Rust 製 CLI ツールの予定です。
 
-It will rebuild PDFs by reorganizing existing pages rather than rendering PDF contents again.
+PDF の内容を再レンダリングするのではなく、既存 PDF のページを再構成して新しい PDF を出力する方針です。
 
-Detailed specifications and implementation will be added in later commits.
+詳細な仕様と実装は今後のコミットで追加します。
