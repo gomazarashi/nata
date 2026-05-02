@@ -99,34 +99,31 @@ pub fn enforce_on_input(
 fn collect_features(root: &Value) -> Vec<StrictFeature> {
     let mut features = Vec::new();
 
-    if object_key_present(root, "encrypt")
-        || object_key_present(root, "encryption")
-        || bool_key_is_true(root, "encrypted")
-    {
+    if encryption_present(root) {
         features.push(StrictFeature::Encrypted);
     }
-    if object_key_present(root, "outlines") {
+    if non_empty_array_key_present(root, "outlines")
+        || non_empty_object_key_present(root, "outlines")
+    {
         features.push(StrictFeature::Outlines);
     }
-    if object_key_present(root, "acroform") {
+    if acroform_present(root) {
         features.push(StrictFeature::AcroForm);
     }
-    if object_key_present(root, "pagelabels") || object_key_present(root, "page_labels") {
+    if non_empty_array_key_present(root, "pagelabels")
+        || non_empty_array_key_present(root, "page_labels")
+        || non_empty_object_key_present(root, "pagelabels")
+        || non_empty_object_key_present(root, "page_labels")
+    {
         features.push(StrictFeature::PageLabels);
     }
-    if object_key_present(root, "structtreeroot")
-        || object_key_present(root, "struct_tree_root")
-        || bool_key_is_true(root, "tagged")
-    {
+    if struct_tree_present(root) {
         features.push(StrictFeature::StructTree);
     }
-    if object_key_present(root, "embeddedfiles")
-        || object_key_present(root, "embedded_files")
-        || object_key_present(root, "attachments")
-    {
+    if attachments_present(root) {
         features.push(StrictFeature::Attachments);
     }
-    if object_key_present(root, "names") {
+    if non_empty_object_key_present(root, "names") {
         features.push(StrictFeature::Names);
     }
 
@@ -135,10 +132,69 @@ fn collect_features(root: &Value) -> Vec<StrictFeature> {
     features
 }
 
-fn object_key_present(root: &Value, needle: &str) -> bool {
+fn acroform_present(root: &Value) -> bool {
+    find_value(root, &mut |key, value| {
+        if !key.eq_ignore_ascii_case("acroform") {
+            return false;
+        }
+
+        match value {
+            Value::Object(map) => {
+                map.get("hasacroform")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                    || map
+                        .get("fields")
+                        .and_then(Value::as_array)
+                        .is_some_and(|fields| !fields.is_empty())
+            }
+            _ => false,
+        }
+    })
+}
+
+fn encryption_present(root: &Value) -> bool {
+    bool_key_is_true(root, "encrypted")
+        || find_value(root, &mut |key, value| {
+            if !(key.eq_ignore_ascii_case("encrypt") || key.eq_ignore_ascii_case("encryption")) {
+                return false;
+            }
+
+            match value {
+                Value::Object(map) => map
+                    .get("encrypted")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                _ => false,
+            }
+        })
+}
+
+fn struct_tree_present(root: &Value) -> bool {
+    bool_key_is_true(root, "tagged")
+        || string_key_present(root, "structtreeroot")
+        || string_key_present(root, "struct_tree_root")
+        || string_key_present(root, "/StructTreeRoot")
+}
+
+fn attachments_present(root: &Value) -> bool {
+    non_empty_object_key_present(root, "embeddedfiles")
+        || non_empty_object_key_present(root, "embedded_files")
+        || non_empty_object_key_present(root, "attachments")
+}
+
+fn non_empty_object_key_present(root: &Value, needle: &str) -> bool {
     let needle = needle.to_ascii_lowercase();
     find_value(root, &mut |key, value| {
         key.eq_ignore_ascii_case(&needle) && matches!(value, Value::Object(map) if !map.is_empty())
+    })
+}
+
+fn non_empty_array_key_present(root: &Value, needle: &str) -> bool {
+    let needle = needle.to_ascii_lowercase();
+    find_value(root, &mut |key, value| {
+        key.eq_ignore_ascii_case(&needle)
+            && matches!(value, Value::Array(items) if !items.is_empty())
     })
 }
 
@@ -146,6 +202,13 @@ fn bool_key_is_true(root: &Value, needle: &str) -> bool {
     let needle = needle.to_ascii_lowercase();
     find_value(root, &mut |key, value| {
         key.eq_ignore_ascii_case(&needle) && value.as_bool() == Some(true)
+    })
+}
+
+fn string_key_present(root: &Value, needle: &str) -> bool {
+    let needle = needle.to_ascii_lowercase();
+    find_value(root, &mut |key, value| {
+        key.eq_ignore_ascii_case(&needle) && value.as_str().is_some()
     })
 }
 
@@ -199,7 +262,7 @@ mod tests {
 
     #[test]
     fn detects_encryption() {
-        let json = br#"{"encrypted":true}"#;
+        let json = br#"{"encrypt":{"encrypted":true}}"#;
         let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
         assert_eq!(inspection.features(), &[StrictFeature::Encrypted]);
     }
@@ -224,5 +287,34 @@ mod tests {
                 StrictFeature::Attachments
             ]
         );
+    }
+
+    #[test]
+    fn ignores_empty_or_false_top_level_sections() {
+        let json = br#"{
+            "acroform": {"fields": [], "hasacroform": false, "needappearances": false},
+            "attachments": {},
+            "encrypt": {"encrypted": false},
+            "outlines": [],
+            "pagelabels": []
+        }"#;
+        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        assert!(inspection.is_clean());
+    }
+
+    #[test]
+    fn detects_struct_tree_root_reference() {
+        let json = br#"{
+            "objects": {
+                "obj:19 0 R": {
+                    "value": {
+                        "/StructTreeRoot": "18 0 R",
+                        "/Type": "/Catalog"
+                    }
+                }
+            }
+        }"#;
+        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        assert_eq!(inspection.features(), &[StrictFeature::StructTree]);
     }
 }
