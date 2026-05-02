@@ -10,6 +10,7 @@ use crate::strict;
 
 pub fn run(args: ExtractArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result<(), AppError> {
     validate_input_pdf(&args.input)?;
+    ensure_output_differs_from_input(&args.output, &args.input)?;
     let total_pages = qpdf.show_npages(&args.input)?;
     strict::enforce_on_input(
         &args.input,
@@ -17,7 +18,6 @@ pub fn run(args: ExtractArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Resu
         common.verbose && !common.quiet,
         qpdf,
     )?;
-    ensure_output_differs_from_input(&args.output, &args.input)?;
 
     let spec = PageSpec::parse(&args.pages)?;
     spec.validate_rules(
