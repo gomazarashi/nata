@@ -42,6 +42,9 @@ pub enum AppError {
     #[error("error: output file already exists: {path}")]
     OutputAlreadyExists { path: PathBuf },
 
+    #[error("error: output path is not a file: {path}")]
+    OutputPathNotFile { path: PathBuf },
+
     #[error("error: output directory does not exist: {path}")]
     OutputDirectoryNotFound { path: PathBuf },
 
@@ -84,16 +87,17 @@ impl AppError {
             | Self::InputPdfNotFile { .. }
             | Self::InputPdfInvalid { .. } => ExitCode::InputPdfError,
             Self::OutputAlreadyExists { .. }
+            | Self::OutputPathNotFile { .. }
             | Self::OutputDirectoryNotFound { .. }
             | Self::TempOutputCreateFailed { .. }
-            | Self::OutputFinalizeFailed { .. } => ExitCode::OutputFileError,
+            | Self::OutputFinalizeFailed { .. }
+            | Self::OutputPathMatchesInput { .. } => ExitCode::OutputFileError,
             Self::InvalidPageSpec(_)
             | Self::PageOutOfRange { .. }
             | Self::OddEvenNotAllowed
             | Self::SinglePageRequired
             | Self::EmptyPageSelection
-            | Self::MergeRequiresAtLeastTwoInputs
-            | Self::OutputPathMatchesInput { .. } => ExitCode::CliArgumentError,
+            | Self::MergeRequiresAtLeastTwoInputs => ExitCode::CliArgumentError,
         }
     }
 }

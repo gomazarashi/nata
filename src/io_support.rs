@@ -30,10 +30,18 @@ pub fn validate_single_output(path: &Path, overwrite: bool) -> Result<(), AppErr
         });
     }
 
-    if path.exists() && !overwrite {
-        return Err(AppError::OutputAlreadyExists {
-            path: path.to_path_buf(),
-        });
+    if path.exists() {
+        if !path.is_file() {
+            return Err(AppError::OutputPathNotFile {
+                path: path.to_path_buf(),
+            });
+        }
+
+        if !overwrite {
+            return Err(AppError::OutputAlreadyExists {
+                path: path.to_path_buf(),
+            });
+        }
     }
 
     Ok(())
@@ -138,6 +146,18 @@ mod tests {
     fn relative_output_in_current_directory_is_allowed() {
         validate_single_output(Path::new("out.pdf"), false)
             .expect("relative output in current directory should be allowed");
+    }
+
+    #[test]
+    fn existing_output_directory_is_rejected_even_with_overwrite() {
+        let dir = tempdir().expect("temp dir should exist");
+        let output = dir.path().join("existing-dir");
+        fs::create_dir(&output).expect("directory should be created");
+
+        assert!(matches!(
+            validate_single_output(&output, true),
+            Err(AppError::OutputPathNotFile { .. })
+        ));
     }
 
     #[test]

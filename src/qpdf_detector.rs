@@ -1,6 +1,6 @@
 use std::env;
 use std::ffi::OsString;
-#[cfg(any(test, unix))]
+#[cfg(unix)]
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -89,7 +89,14 @@ fn is_executable_file(path: &Path) -> bool {
 
     #[cfg(not(unix))]
     {
-        true
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| {
+                matches!(
+                    extension.to_ascii_lowercase().as_str(),
+                    "exe" | "com" | "cmd" | "bat"
+                )
+            })
     }
 }
 
@@ -168,7 +175,7 @@ mod tests {
         permissions.set_mode(0o755);
         fs::set_permissions(&executable, permissions).expect("should update permissions");
 
-        let path_env = env::join_paths([dir.as_path(), executable_dir.as_path()])
+        let path_env = std::env::join_paths([dir.as_path(), executable_dir.as_path()])
             .expect("path env should be constructible");
         let locator = QpdfLocator {
             cli_path: None,
@@ -201,11 +208,23 @@ mod tests {
     }
 
     fn create_test_file(label: &str) -> PathBuf {
-        let file = unique_test_dir(label).with_extension("bin");
+        let file = unique_test_dir(label).with_extension(if cfg!(windows) { "exe" } else { "bin" });
         if let Some(parent) = file.parent() {
             fs::create_dir_all(parent).expect("should create temp dir");
         }
         fs::write(&file, b"test").expect("should create temp file");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let mut permissions = fs::metadata(&file)
+                .expect("candidate should exist")
+                .permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&file, permissions).expect("should update permissions");
+        }
+
         file
     }
 

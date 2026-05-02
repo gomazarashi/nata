@@ -81,6 +81,36 @@ impl PageSpec {
 
         Ok(resolved)
     }
+
+    pub fn to_qpdf_range(&self) -> String {
+        self.items
+            .iter()
+            .map(PageExpr::to_qpdf_range)
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+}
+
+impl PageExpr {
+    fn to_qpdf_range(&self) -> String {
+        match self {
+            Self::Number(page) => page.to_string(),
+            Self::Range(start, end) => format!("{}-{}", start.to_qpdf_range(), end.to_qpdf_range()),
+            Self::All => "1-z".into(),
+            Self::Last => "z".into(),
+            Self::Odd => "1-z:odd".into(),
+            Self::Even => "1-z:even".into(),
+        }
+    }
+}
+
+impl PageBound {
+    fn to_qpdf_range(&self) -> String {
+        match self {
+            Self::Number(page) => page.to_string(),
+            Self::Last => "z".into(),
+        }
+    }
 }
 
 impl FromStr for PageSpec {
@@ -246,5 +276,11 @@ mod tests {
             ),
             Err(AppError::SinglePageRequired)
         ));
+    }
+
+    #[test]
+    fn converts_to_compact_qpdf_ranges() {
+        let spec = PageSpec::parse("1-3,last,odd,even,4-last").expect("spec should parse");
+        assert_eq!(spec.to_qpdf_range(), "1-3,z,1-z:odd,1-z:even,4-z");
     }
 }

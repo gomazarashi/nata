@@ -12,7 +12,7 @@ pub fn run(args: ExtractArgs, qpdf: &QpdfRunner) -> Result<(), AppError> {
 
     let total_pages = qpdf.show_npages(&args.input)?;
     let spec = PageSpec::parse(&args.pages)?;
-    let pages = spec.validate_rules(
+    spec.validate_rules(
         total_pages,
         PageSpecRules {
             allow_odd_even: true,
@@ -20,9 +20,10 @@ pub fn run(args: ExtractArgs, qpdf: &QpdfRunner) -> Result<(), AppError> {
             allow_empty_result: false,
         },
     )?;
+    let page_range = spec.to_qpdf_range();
 
     let pending = prepare_single_output(&args.output, args.overwrite)?;
-    qpdf.extract_pages(&args.input, &pages, pending.temp_path())?;
+    qpdf.extract_pages(&args.input, &page_range, pending.temp_path())?;
     pending.finalize()?;
 
     Ok(())

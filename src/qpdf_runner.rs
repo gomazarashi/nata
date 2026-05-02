@@ -39,13 +39,12 @@ impl QpdfRunner {
         Ok(page_count)
     }
 
-    pub fn extract_pages(&self, input: &Path, pages: &[u32], output: &Path) -> Result<(), AppError> {
-        let page_range = format_page_range(pages);
+    pub fn extract_pages(&self, input: &Path, page_range: &str, output: &Path) -> Result<(), AppError> {
         let output_result = Command::new(&self.executable)
             .arg(input)
             .arg("--pages")
             .arg(".")
-            .arg(&page_range)
+            .arg(page_range)
             .arg("--")
             .arg(output)
             .output()
@@ -89,14 +88,6 @@ impl QpdfRunner {
     }
 }
 
-fn format_page_range(pages: &[u32]) -> String {
-    pages
-        .iter()
-        .map(u32::to_string)
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
 fn stderr_summary(stderr: &[u8]) -> String {
     let text = String::from_utf8_lossy(stderr).trim().to_string();
     if text.is_empty() {
@@ -108,10 +99,4 @@ fn stderr_summary(stderr: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::format_page_range;
-
-    #[test]
-    fn page_range_format_preserves_order_and_duplicates() {
-        assert_eq!(format_page_range(&[3, 1, 2, 2, 5]), "3,1,2,2,5");
-    }
 }
