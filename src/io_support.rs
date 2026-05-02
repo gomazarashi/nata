@@ -91,13 +91,25 @@ pub fn prepare_multiple_outputs(
     let mut prepared = Vec::with_capacity(paths.len());
 
     for path in paths {
-        if !seen.insert(path.clone()) {
+        if !seen.insert(output_path_identity(path)) {
             return Err(AppError::DuplicateOutputPath { path: path.clone() });
         }
         prepared.push(prepare_single_output(path, overwrite)?);
     }
 
     Ok(prepared)
+}
+
+pub fn output_path_identity(path: &Path) -> String {
+    #[cfg(windows)]
+    {
+        path.to_string_lossy().to_lowercase()
+    }
+
+    #[cfg(not(windows))]
+    {
+        path.to_string_lossy().into_owned()
+    }
 }
 
 pub struct PendingOutput {
@@ -152,8 +164,8 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        ensure_output_directory, prepare_multiple_outputs, prepare_single_output,
-        validate_input_pdf, validate_single_output,
+        ensure_output_directory, output_path_identity, prepare_multiple_outputs,
+        prepare_single_output, validate_input_pdf, validate_single_output,
     };
     use crate::error::AppError;
 
@@ -286,5 +298,29 @@ mod tests {
         };
 
         assert!(matches!(error, AppError::DuplicateOutputPath { path } if path == output));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn output_path_identity_is_case_insensitive_on_windows() {
+        assert_eq!(
+            output_path_identity(Path::new("Out.pdf")),
+            output_path_identity(Path::new("out.PDF"))
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prepare_multiple_outputs_rejects_case_only_path_collisions_on_windows() {
+        let dir = tempdir().expect("temp dir should exist");
+        let upper = dir.path().join("Out.pdf");
+        let lower = dir.path().join("out.pdf");
+
+        let error = match prepare_multiple_outputs(&[upper.clone(), lower], false) {
+            Ok(_) => panic!("case-only collisions should be rejected"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(error, AppError::DuplicateOutputPath { path } if path == dir.path().join("out.pdf")));
     }
 }

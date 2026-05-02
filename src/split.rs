@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 
 use crate::cli::{CommonOptions, SplitArgs};
 use crate::error::AppError;
-use crate::io_support::{ensure_output_directory, prepare_multiple_outputs, validate_input_pdf};
+use crate::io_support::{
+    ensure_output_directory, output_path_identity, prepare_multiple_outputs, validate_input_pdf,
+};
 use crate::page_spec::{PageSpec, PageSpecRules};
 use crate::qpdf_runner::QpdfRunner;
 use crate::strict;
@@ -105,7 +107,7 @@ fn build_chunk_entries(
 }
 
 fn apply_duplicate_suffixes(entries: Vec<SplitPlanEntry>) -> Vec<SplitPlanEntry> {
-    let mut used_paths = HashSet::<PathBuf>::new();
+    let mut used_paths = HashSet::<String>::new();
 
     entries
         .into_iter()
@@ -113,7 +115,7 @@ fn apply_duplicate_suffixes(entries: Vec<SplitPlanEntry>) -> Vec<SplitPlanEntry>
             let original_output_path = entry.output_path.clone();
             let mut suffix = 2;
 
-            while !used_paths.insert(entry.output_path.clone()) {
+            while !used_paths.insert(output_path_identity(&entry.output_path)) {
                 entry.output_path = with_duplicate_suffix(&original_output_path, suffix);
                 suffix += 1;
             }
@@ -179,7 +181,7 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::{build_split_plan, run};
+    use super::{SplitPlanEntry, apply_duplicate_suffixes, build_split_plan, run};
     use crate::cli::{CommonOptions, SplitArgs};
     use crate::error::AppError;
     use crate::qpdf_runner::QpdfRunner;
@@ -375,6 +377,29 @@ mod tests {
             .collect::<HashSet<_>>();
 
         assert_eq!(outputs.len(), plan.len());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn split_plan_avoids_case_only_output_collisions_on_windows() {
+        let dir = tempdir().expect("temp dir should exist");
+        let entries = vec![
+            SplitPlanEntry {
+                output_path: dir.path().join("input-Out.pdf"),
+                page_range: "1".into(),
+            },
+            SplitPlanEntry {
+                output_path: dir.path().join("input-out.pdf"),
+                page_range: "2".into(),
+            },
+        ];
+
+        let outputs = apply_duplicate_suffixes(entries)
+            .iter()
+            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(outputs, vec!["input-Out.pdf", "input-out-2.pdf"]);
     }
 
     #[test]
