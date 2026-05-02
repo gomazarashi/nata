@@ -44,8 +44,17 @@ pub enum AppError {
     #[error("error: output path is not a file: {path}")]
     OutputPathNotFile { path: PathBuf },
 
+    #[error("error: output directory path is not a directory: {path}")]
+    OutputPathNotDirectory { path: PathBuf },
+
     #[error("error: output directory does not exist: {path}")]
     OutputDirectoryNotFound { path: PathBuf },
+
+    #[error("error: failed to create output directory: {path}: {source}")]
+    OutputDirectoryCreateFailed {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 
     #[error("error: failed to create temporary output near {path}: {source}")]
     TempOutputCreateFailed {
@@ -90,7 +99,9 @@ impl AppError {
             | Self::InputPdfInvalid { .. } => ExitCode::InputPdfError,
             Self::OutputAlreadyExists { .. }
             | Self::OutputPathNotFile { .. }
+            | Self::OutputPathNotDirectory { .. }
             | Self::OutputDirectoryNotFound { .. }
+            | Self::OutputDirectoryCreateFailed { .. }
             | Self::TempOutputCreateFailed { .. }
             | Self::OutputFinalizeFailed { .. }
             | Self::OutputPathMatchesInput { .. } => ExitCode::OutputFileError,
