@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::Read;
 use std::path::Path;
 
 use serde_json::Value;
@@ -43,8 +44,8 @@ pub struct StrictInspection {
 }
 
 impl StrictInspection {
-    pub fn from_qpdf_json(raw: &[u8]) -> Result<Self, String> {
-        let root: Value = serde_json::from_slice(raw)
+    pub fn from_qpdf_json_reader(reader: impl Read) -> Result<Self, String> {
+        let root: Value = serde_json::from_reader(reader)
             .map_err(|source| format!("unexpected qpdf --json output: {source}"))?;
 
         Ok(Self {
@@ -224,21 +225,24 @@ mod tests {
     #[test]
     fn detects_outlines() {
         let json = br#"{"outlines":{"first":"1 0 R"}}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(inspection.features(), &[StrictFeature::Outlines]);
     }
 
     #[test]
     fn detects_struct_tree_and_tagged_flag() {
         let json = br#"{"tagged":true,"qpdf":[{"jsonversion":2}]}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(inspection.features(), &[StrictFeature::StructTree]);
     }
 
     #[test]
     fn detects_acroform_and_page_labels() {
         let json = br#"{"acroform":{"fields":[1]},"pagelabels":{"nums":[0]}}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(
             inspection.features(),
             &[StrictFeature::AcroForm, StrictFeature::PageLabels]
@@ -248,7 +252,8 @@ mod tests {
     #[test]
     fn detects_names_and_attachments() {
         let json = br#"{"names":{"EmbeddedFiles":{"Kids":[1]}},"attachments":{"items":[1]}}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(
             inspection.features(),
             &[StrictFeature::Names, StrictFeature::Attachments]
@@ -258,14 +263,16 @@ mod tests {
     #[test]
     fn detects_encryption() {
         let json = br#"{"encrypt":{"encrypted":true}}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(inspection.features(), &[StrictFeature::Encrypted]);
     }
 
     #[test]
     fn clean_document_has_no_violations() {
         let json = br#"{"pages":[{"object":"3 0 R"}],"pdfversion":"1.7"}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert!(inspection.is_clean());
     }
 
@@ -273,7 +280,8 @@ mod tests {
     fn deduplicates_multiple_matches() {
         let json =
             br#"{"names":{"EmbeddedFiles":{"items":[1]}},"embeddedfiles":{"root":1},"tagged":true}"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(
             inspection.features(),
             &[
@@ -293,7 +301,8 @@ mod tests {
             "outlines": [],
             "pagelabels": []
         }"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert!(inspection.is_clean());
     }
 
@@ -309,7 +318,8 @@ mod tests {
                 }
             }
         }"#;
-        let inspection = StrictInspection::from_qpdf_json(json).expect("json should parse");
+        let inspection =
+            StrictInspection::from_qpdf_json_reader(&json[..]).expect("json should parse");
         assert_eq!(inspection.features(), &[StrictFeature::StructTree]);
     }
 }
