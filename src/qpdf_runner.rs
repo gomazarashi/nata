@@ -21,7 +21,8 @@ impl QpdfRunner {
     }
 
     pub fn show_npages(&self, input: &Path) -> Result<u32, AppError> {
-        let output = Command::new(&self.executable)
+        let output = self
+            .new_command()
             .arg("--show-npages")
             .arg(input)
             .output()
@@ -61,7 +62,8 @@ impl QpdfRunner {
                 source,
             })?;
 
-        let output = Command::new(&self.executable)
+        let output = self
+            .new_command()
             .arg("--json")
             .arg(input)
             .stdout(Stdio::from(json_output))
@@ -99,7 +101,8 @@ impl QpdfRunner {
         page_range: &str,
         output: &Path,
     ) -> Result<(), AppError> {
-        let output_result = Command::new(&self.executable)
+        let output_result = self
+            .new_command()
             .arg(input)
             .arg("--pages")
             .arg(".")
@@ -123,7 +126,7 @@ impl QpdfRunner {
     }
 
     pub fn merge_pdfs(&self, inputs: &[PathBuf], output: &Path) -> Result<(), AppError> {
-        let mut command = Command::new(&self.executable);
+        let mut command = self.new_command();
         command.arg("--empty").arg("--pages");
         command.args(inputs);
 
@@ -143,6 +146,26 @@ impl QpdfRunner {
 
         Ok(())
     }
+
+    fn new_command(&self) -> Command {
+        #[cfg(windows)]
+        {
+            if is_windows_batch_wrapper(&self.executable) {
+                let mut command = Command::new("cmd.exe");
+                command.arg("/C").arg(&self.executable);
+                return command;
+            }
+        }
+
+        Command::new(&self.executable)
+    }
+}
+
+#[cfg(windows)]
+fn is_windows_batch_wrapper(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
 }
 
 fn stderr_summary(stderr: &[u8]) -> String {
