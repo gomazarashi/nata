@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::cli::{CommonOptions, SplitArgs};
@@ -106,23 +106,20 @@ fn build_chunk_entries(
 }
 
 fn apply_duplicate_suffixes(entries: Vec<SplitPlanEntry>) -> Vec<SplitPlanEntry> {
-    let mut seen = HashMap::<PathBuf, u32>::new();
+    let mut used_paths = HashSet::<PathBuf>::new();
 
     entries
         .into_iter()
-        .map(|entry| {
-            let count = seen.entry(entry.output_path.clone()).or_insert(0);
-            *count += 1;
+        .map(|mut entry| {
+            let original_output_path = entry.output_path.clone();
+            let mut suffix = 2;
 
-            if *count == 1 {
-                entry
-            } else {
-                let output_path = with_duplicate_suffix(&entry.output_path, *count);
-                SplitPlanEntry {
-                    output_path,
-                    page_range: entry.page_range,
-                }
+            while !used_paths.insert(entry.output_path.clone()) {
+                entry.output_path = with_duplicate_suffix(&original_output_path, suffix);
+                suffix += 1;
             }
+
+            entry
         })
         .collect()
 }
@@ -177,6 +174,7 @@ fn range_label(start: u32, end: u32) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use std::fs;
     use std::path::{Path, PathBuf};
 
@@ -299,6 +297,85 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(outputs, vec!["input-1_2.pdf", "input-1_2-2.pdf"]);
+    }
+
+    #[test]
+    fn duplicate_suffixes_avoid_colliding_with_independent_labels() {
+        let dir = tempdir().expect("temp dir should exist");
+        let args = SplitArgs {
+            input: PathBuf::from("input.pdf"),
+            ranges: vec!["1,2".into(), "1 , 2".into(), "1,2-2".into()],
+            every: None,
+            each_page: false,
+            output_dir: dir.path().join("out"),
+            overwrite: false,
+        };
+
+        let plan = build_split_plan(&args, 3).expect("plan should build");
+        let outputs = plan
+            .iter()
+            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            outputs,
+            vec!["input-1_2.pdf", "input-1_2-2.pdf", "input-1_2-2-2.pdf"]
+        );
+    }
+
+    #[test]
+    fn duplicate_suffixes_keep_incrementing_until_unused_name_is_found() {
+        let dir = tempdir().expect("temp dir should exist");
+        let args = SplitArgs {
+            input: PathBuf::from("input.pdf"),
+            ranges: vec![
+                "1,2".into(),
+                "1 , 2".into(),
+                "1, 2".into(),
+                "1,2 ".into(),
+            ],
+            every: None,
+            each_page: false,
+            output_dir: dir.path().join("out"),
+            overwrite: false,
+        };
+
+        let plan = build_split_plan(&args, 4).expect("plan should build");
+        let outputs = plan
+            .iter()
+            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            outputs,
+            vec![
+                "input-1_2.pdf",
+                "input-1_2-2.pdf",
+                "input-1_2-3.pdf",
+                "input-1_2-4.pdf",
+            ]
+        );
+    }
+
+    #[test]
+    fn split_plan_produces_unique_output_paths() {
+        let dir = tempdir().expect("temp dir should exist");
+        let args = SplitArgs {
+            input: PathBuf::from("input.pdf"),
+            ranges: vec!["1,2".into(), "1 , 2".into(), "1,2-2".into()],
+            every: None,
+            each_page: false,
+            output_dir: dir.path().join("out"),
+            overwrite: false,
+        };
+
+        let plan = build_split_plan(&args, 3).expect("plan should build");
+        let outputs = plan
+            .iter()
+            .map(|entry| entry.output_path.clone())
+            .collect::<HashSet<_>>();
+
+        assert_eq!(outputs.len(), plan.len());
     }
 
     #[test]
