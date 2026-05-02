@@ -8,6 +8,8 @@ mod page_spec;
 mod qpdf_detector;
 mod qpdf_runner;
 mod strict;
+#[cfg(test)]
+mod test_support;
 
 use clap::Parser;
 use clap::error::ErrorKind;
