@@ -92,14 +92,19 @@ impl PendingOutput {
 }
 
 fn output_parent_dir(path: &Path) -> Result<&Path, AppError> {
-    path.parent().ok_or_else(|| AppError::OutputDirectoryNotFound {
-        path: path.to_path_buf(),
-    })
+    match path.parent() {
+        Some(parent) if parent.as_os_str().is_empty() => Ok(Path::new(".")),
+        Some(parent) => Ok(parent),
+        None => Err(AppError::OutputDirectoryNotFound {
+            path: path.to_path_buf(),
+        }),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::Path;
 
     use tempfile::tempdir;
 
@@ -126,6 +131,12 @@ mod tests {
             Err(AppError::OutputAlreadyExists { .. })
         ));
         validate_single_output(&output, true).expect("overwrite should allow existing output");
+    }
+
+    #[test]
+    fn relative_output_in_current_directory_is_allowed() {
+        validate_single_output(Path::new("out.pdf"), false)
+            .expect("relative output in current directory should be allowed");
     }
 
     #[test]
