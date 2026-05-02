@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::error::AppError;
+use crate::strict::StrictInspection;
 
 #[derive(Debug, Clone)]
 pub struct QpdfRunner {
@@ -31,15 +32,48 @@ impl QpdfRunner {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let page_count = stdout.trim().parse::<u32>().map_err(|_| AppError::InputPdfInvalid {
-            path: input.to_path_buf(),
-            detail: format!("unexpected qpdf --show-npages output: {}", stdout.trim()),
-        })?;
+        let page_count = stdout
+            .trim()
+            .parse::<u32>()
+            .map_err(|_| AppError::InputPdfInvalid {
+                path: input.to_path_buf(),
+                detail: format!("unexpected qpdf --show-npages output: {}", stdout.trim()),
+            })?;
 
         Ok(page_count)
     }
 
-    pub fn extract_pages(&self, input: &Path, page_range: &str, output: &Path) -> Result<(), AppError> {
+    pub fn inspect_strict_features(&self, input: &Path) -> Result<StrictInspection, AppError> {
+        let output = Command::new(&self.executable)
+            .arg("--json")
+            .arg(input)
+            .output()
+            .map_err(|source| AppError::QpdfExecutionFailed {
+                operation: "inspect_strict_features".into(),
+                source,
+            })?;
+
+        if !output.status.success() {
+            return Err(AppError::QpdfCommandFailed {
+                operation: "inspect_strict_features".into(),
+                detail: stderr_summary(&output.stderr),
+            });
+        }
+
+        StrictInspection::from_qpdf_json(&output.stdout).map_err(|detail| {
+            AppError::QpdfCommandFailed {
+                operation: "inspect_strict_features".into(),
+                detail,
+            }
+        })
+    }
+
+    pub fn extract_pages(
+        &self,
+        input: &Path,
+        page_range: &str,
+        output: &Path,
+    ) -> Result<(), AppError> {
         let output_result = Command::new(&self.executable)
             .arg(input)
             .arg("--pages")
@@ -68,14 +102,12 @@ impl QpdfRunner {
         command.arg("--empty").arg("--pages");
         command.args(inputs);
 
-        let output_result = command
-            .arg("--")
-            .arg(output)
-            .output()
-            .map_err(|source| AppError::QpdfExecutionFailed {
+        let output_result = command.arg("--").arg(output).output().map_err(|source| {
+            AppError::QpdfExecutionFailed {
                 operation: "merge_pdfs".into(),
                 source,
-            })?;
+            }
+        })?;
 
         if !output_result.status.success() {
             return Err(AppError::QpdfCommandFailed {
@@ -98,5 +130,4 @@ fn stderr_summary(stderr: &[u8]) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

@@ -59,7 +59,11 @@ impl PageSpec {
         Ok(resolved)
     }
 
-    pub fn validate_rules(&self, total_pages: u32, rules: PageSpecRules) -> Result<Vec<u32>, AppError> {
+    pub fn validate_rules(
+        &self,
+        total_pages: u32,
+        rules: PageSpecRules,
+    ) -> Result<Vec<u32>, AppError> {
         if !rules.allow_odd_even
             && self
                 .items
@@ -119,7 +123,9 @@ impl FromStr for PageSpec {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let trimmed = input.trim();
         if trimmed.is_empty() {
-            return Err(AppError::InvalidPageSpec("page specification is empty".into()));
+            return Err(AppError::InvalidPageSpec(
+                "page specification is empty".into(),
+            ));
         }
 
         let items = trimmed
@@ -207,7 +213,9 @@ mod tests {
 
     #[test]
     fn accepts_supported_tokens() {
-        for input in ["1", "1-5", "1,3,5-8", "all", "last", "odd", "even", "4-last"] {
+        for input in [
+            "1", "1-5", "1,3,5-8", "all", "last", "odd", "even", "4-last",
+        ] {
             PageSpec::parse(input).expect("page spec should parse");
         }
     }
@@ -215,7 +223,10 @@ mod tests {
     #[test]
     fn rejects_invalid_tokens() {
         for input in ["", "0", "-1", "5-1", "last-4", "last-1", "abc", "1,,2"] {
-            assert!(matches!(PageSpec::parse(input), Err(AppError::InvalidPageSpec(_))));
+            assert!(matches!(
+                PageSpec::parse(input),
+                Err(AppError::InvalidPageSpec(_))
+            ));
         }
     }
 
@@ -229,7 +240,10 @@ mod tests {
     #[test]
     fn resolves_special_tokens() {
         let all = PageSpec::parse("all").expect("spec should parse");
-        assert_eq!(all.resolve(4).expect("all should resolve"), vec![1, 2, 3, 4]);
+        assert_eq!(
+            all.resolve(4).expect("all should resolve"),
+            vec![1, 2, 3, 4]
+        );
 
         let odd = PageSpec::parse("odd").expect("spec should parse");
         assert_eq!(odd.resolve(6).expect("odd should resolve"), vec![1, 3, 5]);

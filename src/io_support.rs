@@ -164,7 +164,8 @@ mod tests {
     fn finalize_promotes_temporary_file() {
         let dir = tempdir().expect("temp dir should exist");
         let output = dir.path().join("out.pdf");
-        let mut pending = prepare_single_output(&output, false).expect("pending output should be created");
+        let mut pending =
+            prepare_single_output(&output, false).expect("pending output should be created");
         assert!(pending.temp_path().exists());
 
         pending
@@ -173,7 +174,10 @@ mod tests {
         let finalized = pending.finalize().expect("finalize should succeed");
 
         assert_eq!(finalized, output);
-        assert_eq!(fs::read(&output).expect("output should exist"), b"nata-output");
+        assert_eq!(
+            fs::read(&output).expect("output should exist"),
+            b"nata-output"
+        );
     }
 
     #[test]
@@ -181,7 +185,8 @@ mod tests {
         let dir = tempdir().expect("temp dir should exist");
         let output = dir.path().join("out.pdf");
         fs::write(&output, b"existing").expect("output file should be created");
-        let mut pending = prepare_single_output(&output, true).expect("pending output should be created");
+        let mut pending =
+            prepare_single_output(&output, true).expect("pending output should be created");
 
         pending
             .write_all(b"nata-output")
@@ -189,14 +194,18 @@ mod tests {
         let finalized = pending.finalize().expect("finalize should succeed");
 
         assert_eq!(finalized, output);
-        assert_eq!(fs::read(&output).expect("output should exist"), b"nata-output");
+        assert_eq!(
+            fs::read(&output).expect("output should exist"),
+            b"nata-output"
+        );
     }
 
     #[test]
     fn dropped_pending_output_does_not_leave_final_file() {
         let dir = tempdir().expect("temp dir should exist");
         let output = dir.path().join("out.pdf");
-        let pending = prepare_single_output(&output, false).expect("pending output should be created");
+        let pending =
+            prepare_single_output(&output, false).expect("pending output should be created");
         let temp_path = pending.temp_path().to_path_buf();
         drop(pending);
 

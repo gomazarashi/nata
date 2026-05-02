@@ -107,7 +107,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{detect_with, QpdfLocator};
+    use super::{QpdfLocator, detect_with};
 
     #[test]
     fn cli_path_has_highest_priority() {
@@ -162,8 +162,7 @@ mod tests {
             .expect("candidate should exist")
             .permissions();
         permissions.set_mode(0o644);
-        fs::set_permissions(&non_executable, permissions)
-            .expect("should update permissions");
+        fs::set_permissions(&non_executable, permissions).expect("should update permissions");
 
         let executable_dir = unique_test_dir("executable");
         fs::create_dir_all(&executable_dir).expect("should create temp dir");

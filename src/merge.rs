@@ -1,17 +1,20 @@
 use std::fs;
 
+use crate::cli::CommonOptions;
 use crate::cli::MergeArgs;
 use crate::error::AppError;
 use crate::io_support::{prepare_single_output, validate_input_pdf};
 use crate::qpdf_runner::QpdfRunner;
+use crate::strict;
 
-pub fn run(args: MergeArgs, qpdf: &QpdfRunner) -> Result<(), AppError> {
+pub fn run(args: MergeArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result<(), AppError> {
     if args.inputs.len() < 2 {
         return Err(AppError::MergeRequiresAtLeastTwoInputs);
     }
 
     for input in &args.inputs {
         validate_input_pdf(input)?;
+        strict::enforce_on_input(input, common.strict, common.verbose && !common.quiet, qpdf)?;
         qpdf.show_npages(input)?;
     }
     ensure_output_differs_from_inputs(&args.output, &args.inputs)?;
@@ -30,11 +33,10 @@ fn ensure_output_differs_from_inputs(
     let output_path = fs::canonicalize(output).unwrap_or_else(|_| output.to_path_buf());
 
     for input in inputs {
-        let input_path =
-            fs::canonicalize(input).map_err(|source| AppError::InputPdfInvalid {
-                path: input.clone(),
-                detail: format!("failed to resolve input path: {source}"),
-            })?;
+        let input_path = fs::canonicalize(input).map_err(|source| AppError::InputPdfInvalid {
+            path: input.clone(),
+            detail: format!("failed to resolve input path: {source}"),
+        })?;
 
         if input_path == output_path {
             return Err(AppError::OutputPathMatchesInput {
@@ -51,6 +53,7 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
+    use crate::cli::CommonOptions;
     use crate::cli::MergeArgs;
     use crate::error::AppError;
     use tempfile::tempdir;
@@ -65,9 +68,18 @@ mod tests {
             output: PathBuf::from("out.pdf"),
             overwrite: false,
         };
+        let common = CommonOptions {
+            qpdf: None,
+            strict: false,
+            quiet: false,
+            verbose: false,
+        };
         let qpdf = QpdfRunner::new(PathBuf::from("qpdf"));
 
-        assert!(matches!(run(args, &qpdf), Err(AppError::MergeRequiresAtLeastTwoInputs)));
+        assert!(matches!(
+            run(args, &common, &qpdf),
+            Err(AppError::MergeRequiresAtLeastTwoInputs)
+        ));
     }
 
     #[test]
@@ -77,7 +89,7 @@ mod tests {
         fs::write(&input, b"pdf").expect("input file should be created");
 
         assert!(matches!(
-            ensure_output_differs_from_inputs(&input, &[input.clone()]),
+            ensure_output_differs_from_inputs(&input, std::slice::from_ref(&input)),
             Err(AppError::OutputPathMatchesInput { .. })
         ));
     }

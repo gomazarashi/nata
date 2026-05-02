@@ -1,13 +1,21 @@
 use std::fs;
 
+use crate::cli::CommonOptions;
 use crate::cli::ExtractArgs;
 use crate::error::AppError;
 use crate::io_support::{prepare_single_output, validate_input_pdf};
 use crate::page_spec::{PageSpec, PageSpecRules};
 use crate::qpdf_runner::QpdfRunner;
+use crate::strict;
 
-pub fn run(args: ExtractArgs, qpdf: &QpdfRunner) -> Result<(), AppError> {
+pub fn run(args: ExtractArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result<(), AppError> {
     validate_input_pdf(&args.input)?;
+    strict::enforce_on_input(
+        &args.input,
+        common.strict,
+        common.verbose && !common.quiet,
+        qpdf,
+    )?;
     ensure_output_differs_from_input(&args.output, &args.input)?;
 
     let total_pages = qpdf.show_npages(&args.input)?;
