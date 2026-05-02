@@ -97,129 +97,124 @@ pub fn enforce_on_input(
 }
 
 fn collect_features(root: &Value) -> Vec<StrictFeature> {
+    let mut summary = StrictSummary::default();
+    walk_value(root, &mut summary);
+
     let mut features = Vec::new();
 
-    if encryption_present(root) {
+    if summary.encrypted {
         features.push(StrictFeature::Encrypted);
     }
-    if non_empty_array_key_present(root, "outlines")
-        || non_empty_object_key_present(root, "outlines")
-    {
+    if summary.outlines {
         features.push(StrictFeature::Outlines);
     }
-    if acroform_present(root) {
+    if summary.acroform {
         features.push(StrictFeature::AcroForm);
     }
-    if non_empty_array_key_present(root, "pagelabels")
-        || non_empty_array_key_present(root, "page_labels")
-        || non_empty_object_key_present(root, "pagelabels")
-        || non_empty_object_key_present(root, "page_labels")
-    {
+    if summary.page_labels {
         features.push(StrictFeature::PageLabels);
     }
-    if struct_tree_present(root) {
+    if summary.struct_tree {
         features.push(StrictFeature::StructTree);
     }
-    if attachments_present(root) {
+    if summary.attachments {
         features.push(StrictFeature::Attachments);
     }
-    if non_empty_object_key_present(root, "names") {
+    if summary.names {
         features.push(StrictFeature::Names);
     }
 
     features.sort_unstable();
-    features.dedup();
     features
 }
 
-fn acroform_present(root: &Value) -> bool {
-    find_value(root, &mut |key, value| {
-        if !key.eq_ignore_ascii_case("acroform") {
-            return false;
-        }
-
-        match value {
-            Value::Object(map) => {
-                map.get("hasacroform")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false)
-                    || map
-                        .get("fields")
-                        .and_then(Value::as_array)
-                        .is_some_and(|fields| !fields.is_empty())
-            }
-            _ => false,
-        }
-    })
+#[derive(Debug, Default)]
+struct StrictSummary {
+    outlines: bool,
+    struct_tree: bool,
+    acroform: bool,
+    page_labels: bool,
+    names: bool,
+    attachments: bool,
+    encrypted: bool,
 }
 
-fn encryption_present(root: &Value) -> bool {
-    bool_key_is_true(root, "encrypted")
-        || find_value(root, &mut |key, value| {
-            if !(key.eq_ignore_ascii_case("encrypt") || key.eq_ignore_ascii_case("encryption")) {
-                return false;
-            }
-
-            match value {
-                Value::Object(map) => map
-                    .get("encrypted")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false),
-                _ => false,
-            }
-        })
-}
-
-fn struct_tree_present(root: &Value) -> bool {
-    bool_key_is_true(root, "tagged")
-        || string_key_present(root, "structtreeroot")
-        || string_key_present(root, "struct_tree_root")
-        || string_key_present(root, "/StructTreeRoot")
-}
-
-fn attachments_present(root: &Value) -> bool {
-    non_empty_object_key_present(root, "embeddedfiles")
-        || non_empty_object_key_present(root, "embedded_files")
-        || non_empty_object_key_present(root, "attachments")
-}
-
-fn non_empty_object_key_present(root: &Value, needle: &str) -> bool {
-    let needle = needle.to_ascii_lowercase();
-    find_value(root, &mut |key, value| {
-        key.eq_ignore_ascii_case(&needle) && matches!(value, Value::Object(map) if !map.is_empty())
-    })
-}
-
-fn non_empty_array_key_present(root: &Value, needle: &str) -> bool {
-    let needle = needle.to_ascii_lowercase();
-    find_value(root, &mut |key, value| {
-        key.eq_ignore_ascii_case(&needle)
-            && matches!(value, Value::Array(items) if !items.is_empty())
-    })
-}
-
-fn bool_key_is_true(root: &Value, needle: &str) -> bool {
-    let needle = needle.to_ascii_lowercase();
-    find_value(root, &mut |key, value| {
-        key.eq_ignore_ascii_case(&needle) && value.as_bool() == Some(true)
-    })
-}
-
-fn string_key_present(root: &Value, needle: &str) -> bool {
-    let needle = needle.to_ascii_lowercase();
-    find_value(root, &mut |key, value| {
-        key.eq_ignore_ascii_case(&needle) && value.as_str().is_some()
-    })
-}
-
-fn find_value(value: &Value, predicate: &mut impl FnMut(&str, &Value) -> bool) -> bool {
+fn walk_value(value: &Value, summary: &mut StrictSummary) {
     match value {
-        Value::Object(map) => map
-            .iter()
-            .any(|(key, value)| predicate(key, value) || find_value(value, predicate)),
-        Value::Array(items) => items.iter().any(|item| find_value(item, predicate)),
+        Value::Object(map) => {
+            for (key, value) in map {
+                visit_entry(key, value, summary);
+                walk_value(value, summary);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                walk_value(item, summary);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn visit_entry(key: &str, value: &Value, summary: &mut StrictSummary) {
+    if key.eq_ignore_ascii_case("outlines") {
+        summary.outlines |= is_non_empty_container(value);
+    } else if key.eq_ignore_ascii_case("acroform") {
+        summary.acroform |= acroform_value_present(value);
+    } else if key.eq_ignore_ascii_case("pagelabels") || key.eq_ignore_ascii_case("page_labels") {
+        summary.page_labels |= is_non_empty_container(value);
+    } else if key.eq_ignore_ascii_case("tagged") {
+        summary.struct_tree |= value.as_bool() == Some(true);
+    } else if key.eq_ignore_ascii_case("structtreeroot")
+        || key.eq_ignore_ascii_case("struct_tree_root")
+        || key.eq_ignore_ascii_case("/StructTreeRoot")
+    {
+        summary.struct_tree |= value.as_str().is_some();
+    } else if key.eq_ignore_ascii_case("embeddedfiles")
+        || key.eq_ignore_ascii_case("embedded_files")
+        || key.eq_ignore_ascii_case("attachments")
+    {
+        summary.attachments |= is_non_empty_object(value);
+    } else if key.eq_ignore_ascii_case("names") {
+        summary.names |= is_non_empty_object(value);
+    } else if key.eq_ignore_ascii_case("encrypted") {
+        summary.encrypted |= value.as_bool() == Some(true);
+    } else if key.eq_ignore_ascii_case("encrypt") || key.eq_ignore_ascii_case("encryption") {
+        summary.encrypted |= encryption_value_present(value);
+    }
+}
+
+fn acroform_value_present(value: &Value) -> bool {
+    match value {
+        Value::Object(map) => {
+            map.get("hasacroform")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+                || map
+                    .get("fields")
+                    .and_then(Value::as_array)
+                    .is_some_and(|fields| !fields.is_empty())
+        }
         _ => false,
     }
+}
+
+fn encryption_value_present(value: &Value) -> bool {
+    match value {
+        Value::Object(map) => map
+            .get("encrypted")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        _ => false,
+    }
+}
+
+fn is_non_empty_container(value: &Value) -> bool {
+    is_non_empty_object(value) || matches!(value, Value::Array(items) if !items.is_empty())
+}
+
+fn is_non_empty_object(value: &Value) -> bool {
+    matches!(value, Value::Object(map) if !map.is_empty())
 }
 
 #[cfg(test)]
