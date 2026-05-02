@@ -67,10 +67,7 @@ impl QpdfRunner {
     pub fn merge_pdfs(&self, inputs: &[PathBuf], output: &Path) -> Result<(), AppError> {
         let mut command = Command::new(&self.executable);
         command.arg("--empty").arg("--pages");
-
-        for input in format_qpdf_merge_inputs(inputs) {
-            command.arg(input);
-        }
+        command.args(inputs);
 
         let output_result = command
             .arg("--")
@@ -111,32 +108,10 @@ fn stderr_summary(stderr: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use super::{format_page_range, format_qpdf_merge_inputs};
+    use super::format_page_range;
 
     #[test]
     fn page_range_format_preserves_order_and_duplicates() {
         assert_eq!(format_page_range(&[3, 1, 2, 2, 5]), "3,1,2,2,5");
     }
-
-    #[test]
-    fn merge_input_format_preserves_order() {
-        let inputs = vec![
-            PathBuf::from("a.pdf"),
-            PathBuf::from("b.pdf"),
-            PathBuf::from("c.pdf"),
-        ];
-        assert_eq!(
-            format_qpdf_merge_inputs(&inputs),
-            vec!["a.pdf", "b.pdf", "c.pdf"]
-        );
-    }
-}
-
-fn format_qpdf_merge_inputs(inputs: &[PathBuf]) -> Vec<String> {
-    inputs
-        .iter()
-        .map(|path| path.display().to_string())
-        .collect()
 }
