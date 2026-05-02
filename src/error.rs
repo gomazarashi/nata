@@ -6,7 +6,7 @@ use crate::exit_code::ExitCode;
 
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("error: qpdf executable was not found\nhint: install qpdf and ensure it is available in PATH\nhint: or pass --qpdf <path>")]
+    #[error("error: qpdf executable was not found\nhint: install qpdf and ensure it is available in PATH\nhint: or set NATA_QPDF=<path>\nhint: or pass --qpdf <path>")]
     QpdfNotFound,
 
     #[error("error: qpdf executable path is invalid: {path}")]
