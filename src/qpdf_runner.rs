@@ -8,6 +8,8 @@ use tempfile::NamedTempFile;
 use crate::error::AppError;
 use crate::strict::StrictInspection;
 
+const STRICT_INSPECTION_OPERATION: &str = "strict inspection (qpdf --json)";
+
 #[derive(Debug, Clone)]
 pub struct QpdfRunner {
     executable: PathBuf,
@@ -49,13 +51,13 @@ impl QpdfRunner {
 
     pub fn inspect_strict_features(&self, input: &Path) -> Result<StrictInspection, AppError> {
         let json_file = NamedTempFile::new().map_err(|source| AppError::QpdfExecutionFailed {
-            operation: "inspect_strict_features".into(),
+            operation: STRICT_INSPECTION_OPERATION.into(),
             source,
         })?;
         let json_output = json_file
             .reopen()
             .map_err(|source| AppError::QpdfExecutionFailed {
-                operation: "inspect_strict_features".into(),
+                operation: STRICT_INSPECTION_OPERATION.into(),
                 source,
             })?;
 
@@ -66,26 +68,26 @@ impl QpdfRunner {
             .stderr(Stdio::piped())
             .output()
             .map_err(|source| AppError::QpdfExecutionFailed {
-                operation: "inspect_strict_features".into(),
+                operation: STRICT_INSPECTION_OPERATION.into(),
                 source,
             })?;
 
         if !output.status.success() {
             return Err(AppError::QpdfCommandFailed {
-                operation: "inspect_strict_features".into(),
+                operation: STRICT_INSPECTION_OPERATION.into(),
                 detail: stderr_summary(&output.stderr),
             });
         }
 
         let json_input =
             File::open(json_file.path()).map_err(|source| AppError::QpdfExecutionFailed {
-                operation: "inspect_strict_features".into(),
+                operation: STRICT_INSPECTION_OPERATION.into(),
                 source,
             })?;
 
         StrictInspection::from_qpdf_json_reader(json_input).map_err(|detail| {
             AppError::QpdfCommandFailed {
-                operation: "inspect_strict_features".into(),
+                operation: STRICT_INSPECTION_OPERATION.into(),
                 detail,
             }
         })
@@ -159,7 +161,7 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::QpdfRunner;
+    use super::{QpdfRunner, STRICT_INSPECTION_OPERATION};
     use crate::error::AppError;
     use crate::strict::StrictFeature;
 
@@ -191,7 +193,7 @@ mod tests {
         assert!(matches!(
             qpdf.inspect_strict_features(&input),
             Err(AppError::QpdfCommandFailed { operation, detail })
-                if operation == "inspect_strict_features" && detail.contains("strict json failure")
+                if operation == STRICT_INSPECTION_OPERATION && detail.contains("strict json failure")
         ));
     }
 
