@@ -277,7 +277,7 @@ mod tests {
     }
 
     #[test]
-    fn deduplicates_multiple_matches() {
+    fn handles_multiple_matches() {
         let json =
             br#"{"names":{"EmbeddedFiles":{"items":[1]}},"embeddedfiles":{"root":1},"tagged":true}"#;
         let inspection =
