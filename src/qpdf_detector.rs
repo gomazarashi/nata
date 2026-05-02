@@ -1,5 +1,6 @@
 use std::env;
 use std::ffi::OsString;
+#[cfg(any(test, unix))]
 use std::fs;
 use std::path::{Path, PathBuf};
 
