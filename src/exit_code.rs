@@ -1,12 +1,11 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExitCode {
     Success = 0,
-    GeneralError = 1,
-    CliArgumentError = 2,
-    InputPdfError = 3,
-    OutputFileError = 4,
-    BackendError = 5,
-    StrictViolation = 6,
+    CliArgumentError = 1,
+    InputPdfError = 2,
+    OutputFileError = 3,
+    BackendError = 4,
+    StrictViolation = 5,
 }
 
 impl ExitCode {

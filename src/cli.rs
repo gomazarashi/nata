@@ -18,9 +18,6 @@ pub struct CommonOptions {
     pub qpdf: Option<PathBuf>,
 
     #[arg(long, global = true)]
-    pub strict: bool,
-
-    #[arg(long, global = true)]
     pub quiet: bool,
 
     #[arg(long, global = true)]
@@ -31,12 +28,6 @@ pub struct CommonOptions {
 pub enum Commands {
     Merge(MergeArgs),
     Extract(ExtractArgs),
-    Remove,
-    Reorder,
-    Insert,
-    Replace,
-    Split,
-    Rotate,
 }
 
 #[derive(Debug, Clone, Args)]
