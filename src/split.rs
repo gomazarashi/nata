@@ -25,6 +25,7 @@ pub fn run(args: SplitArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result
     )?;
 
     let plan = build_split_plan(&args, total_pages)?;
+    ensure_output_directory(&args.output_dir)?;
     let output_paths = plan
         .iter()
         .map(|entry| entry.output_path.clone())
@@ -40,8 +41,6 @@ pub fn run(args: SplitArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result
 }
 
 fn build_split_plan(args: &SplitArgs, total_pages: u32) -> Result<Vec<SplitPlanEntry>, AppError> {
-    ensure_output_directory(&args.output_dir)?;
-
     let input_stem = input_stem(&args.input);
     let raw_entries = if !args.ranges.is_empty() {
         build_range_entries(&input_stem, &args.output_dir, &args.ranges, total_pages)?
@@ -406,6 +405,24 @@ mod tests {
         assert!(output_dir.is_dir());
         assert!(output_dir.join("input-1-2.pdf").exists());
         assert!(output_dir.join("input-3.pdf").exists());
+    }
+
+    #[test]
+    fn invalid_split_plan_does_not_create_output_directory() {
+        let dir = tempdir().expect("temp dir should exist");
+        let args = SplitArgs {
+            input: PathBuf::from("input.pdf"),
+            ranges: vec!["odd".into()],
+            every: None,
+            each_page: false,
+            output_dir: dir.path().join("out"),
+            overwrite: false,
+        };
+
+        let error = build_split_plan(&args, 5).expect_err("odd should be rejected");
+
+        assert!(matches!(error, AppError::OddEvenNotAllowed));
+        assert!(!args.output_dir.exists());
     }
 
     #[test]
