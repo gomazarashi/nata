@@ -1,5 +1,6 @@
 #[cfg(test)]
 use std::fs;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use tempfile::{Builder, TempPath};
@@ -66,6 +67,39 @@ pub fn prepare_single_output(path: &Path, overwrite: bool) -> Result<PendingOutp
     })
 }
 
+pub fn ensure_output_directory(path: &Path) -> Result<(), AppError> {
+    if path.exists() {
+        if !path.is_dir() {
+            return Err(AppError::OutputPathNotDirectory {
+                path: path.to_path_buf(),
+            });
+        }
+        return Ok(());
+    }
+
+    std::fs::create_dir_all(path).map_err(|source| AppError::OutputDirectoryCreateFailed {
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+pub fn prepare_multiple_outputs(
+    paths: &[PathBuf],
+    overwrite: bool,
+) -> Result<Vec<PendingOutput>, AppError> {
+    let mut seen = HashSet::new();
+    let mut prepared = Vec::with_capacity(paths.len());
+
+    for path in paths {
+        if !seen.insert(path.clone()) {
+            return Err(AppError::DuplicateOutputPath { path: path.clone() });
+        }
+        prepared.push(prepare_single_output(path, overwrite)?);
+    }
+
+    Ok(prepared)
+}
+
 pub struct PendingOutput {
     final_path: PathBuf,
     temp_path: TempPath,
@@ -117,7 +151,10 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::{prepare_single_output, validate_input_pdf, validate_single_output};
+    use super::{
+        ensure_output_directory, prepare_multiple_outputs, prepare_single_output,
+        validate_input_pdf, validate_single_output,
+    };
     use crate::error::AppError;
 
     #[test]
@@ -211,5 +248,43 @@ mod tests {
 
         assert!(!output.exists());
         assert!(!temp_path.exists());
+    }
+
+    #[test]
+    fn ensure_output_directory_creates_missing_directory() {
+        let dir = tempdir().expect("temp dir should exist");
+        let output_dir = dir.path().join("nested").join("out");
+
+        ensure_output_directory(&output_dir).expect("directory should be created");
+
+        assert!(output_dir.is_dir());
+    }
+
+    #[test]
+    fn prepare_multiple_outputs_rejects_existing_files_without_overwrite() {
+        let dir = tempdir().expect("temp dir should exist");
+        let first = dir.path().join("first.pdf");
+        let second = dir.path().join("second.pdf");
+        fs::write(&second, b"existing").expect("existing output should be created");
+
+        let error = match prepare_multiple_outputs(&[first, second.clone()], false) {
+            Ok(_) => panic!("existing output should be rejected"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(error, AppError::OutputAlreadyExists { path } if path == second));
+    }
+
+    #[test]
+    fn prepare_multiple_outputs_rejects_duplicate_requested_paths() {
+        let dir = tempdir().expect("temp dir should exist");
+        let output = dir.path().join("out.pdf");
+
+        let error = match prepare_multiple_outputs(&[output.clone(), output.clone()], false) {
+            Ok(_) => panic!("duplicate output paths should be rejected"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(error, AppError::DuplicateOutputPath { path } if path == output));
     }
 }
