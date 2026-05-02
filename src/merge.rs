@@ -14,8 +14,8 @@ pub fn run(args: MergeArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result
 
     for input in &args.inputs {
         validate_input_pdf(input)?;
-        strict::enforce_on_input(input, common.strict, common.verbose && !common.quiet, qpdf)?;
         qpdf.show_npages(input)?;
+        strict::enforce_on_input(input, common.strict, common.verbose && !common.quiet, qpdf)?;
     }
     ensure_output_differs_from_inputs(&args.output, &args.inputs)?;
 
