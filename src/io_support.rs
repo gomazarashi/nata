@@ -81,13 +81,6 @@ impl PendingOutput {
             temp_path,
         } = self;
 
-        if final_path.exists() {
-            fs::remove_file(&final_path).map_err(|source| AppError::OutputFinalizeFailed {
-                path: final_path.clone(),
-                source,
-            })?;
-        }
-
         temp_path
             .persist(&final_path)
             .map(|_| final_path.clone())
@@ -141,6 +134,22 @@ mod tests {
         let output = dir.path().join("out.pdf");
         let mut pending = prepare_single_output(&output, false).expect("pending output should be created");
         assert!(pending.temp_path().exists());
+
+        pending
+            .write_all(b"nata-output")
+            .expect("temporary file should be writable");
+        let finalized = pending.finalize().expect("finalize should succeed");
+
+        assert_eq!(finalized, output);
+        assert_eq!(fs::read(&output).expect("output should exist"), b"nata-output");
+    }
+
+    #[test]
+    fn finalize_overwrites_existing_output() {
+        let dir = tempdir().expect("temp dir should exist");
+        let output = dir.path().join("out.pdf");
+        fs::write(&output, b"existing").expect("output file should be created");
+        let mut pending = prepare_single_output(&output, true).expect("pending output should be created");
 
         pending
             .write_all(b"nata-output")
