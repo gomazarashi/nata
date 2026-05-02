@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand, value_parser};
 
 #[derive(Debug, Parser)]
 #[command(name = "nata", version, about = "PDFをページ単位で編集するCLIツール")]
@@ -18,6 +18,9 @@ pub struct CommonOptions {
     pub qpdf: Option<PathBuf>,
 
     #[arg(long, global = true)]
+    pub strict: bool,
+
+    #[arg(long, global = true)]
     pub quiet: bool,
 
     #[arg(long, global = true)]
@@ -28,6 +31,7 @@ pub struct CommonOptions {
 pub enum Commands {
     Merge(MergeArgs),
     Extract(ExtractArgs),
+    Split(SplitArgs),
 }
 
 #[derive(Debug, Clone, Args)]
@@ -54,4 +58,96 @@ pub struct ExtractArgs {
 
     #[arg(long)]
     pub overwrite: bool,
+}
+
+#[derive(Debug, Clone, Args)]
+#[command(group(
+    ArgGroup::new("split_mode")
+        .args(["ranges", "every", "each_page"])
+        .required(true)
+        .multiple(false)
+))]
+pub struct SplitArgs {
+    pub input: PathBuf,
+
+    #[arg(long, value_name = "spec")]
+    pub ranges: Vec<String>,
+
+    #[arg(long, value_name = "n", value_parser = value_parser!(u32).range(1..))]
+    pub every: Option<u32>,
+
+    #[arg(long)]
+    pub each_page: bool,
+
+    #[arg(short = 'd', long = "output-dir", value_name = "dir")]
+    pub output_dir: PathBuf,
+
+    #[arg(long)]
+    pub overwrite: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use clap::Parser;
+
+    use super::{Cli, Commands};
+
+    #[test]
+    fn parses_global_strict_option() {
+        let cli = Cli::try_parse_from([
+            "nata", "--strict", "extract", "in.pdf", "--pages", "1", "-o", "out.pdf",
+        ])
+        .expect("cli should parse");
+
+        assert!(cli.common.strict);
+        assert!(matches!(cli.command, Commands::Extract(_)));
+    }
+
+    #[test]
+    fn parses_split_command() {
+        let cli = Cli::try_parse_from([
+            "nata",
+            "split",
+            "in.pdf",
+            "--every",
+            "2",
+            "-d",
+            "out",
+        ])
+        .expect("cli should parse");
+
+        let Commands::Split(args) = cli.command else {
+            panic!("split command should parse");
+        };
+        assert_eq!(args.every, Some(2));
+        assert_eq!(args.output_dir, PathBuf::from("out"));
+    }
+
+    #[test]
+    fn split_requires_exactly_one_mode() {
+        assert!(Cli::try_parse_from(["nata", "split", "in.pdf", "-d", "out"]).is_err());
+        assert!(
+            Cli::try_parse_from([
+                "nata",
+                "split",
+                "in.pdf",
+                "--each-page",
+                "--every",
+                "2",
+                "-d",
+                "out",
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn split_rejects_zero_every() {
+        assert!(
+            Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "0", "-d", "out"])
+                .is_err()
+        );
+    }
 }
