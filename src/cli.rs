@@ -18,6 +18,9 @@ pub struct CommonOptions {
     pub qpdf: Option<PathBuf>,
 
     #[arg(long, global = true)]
+    pub strict: bool,
+
+    #[arg(long, global = true)]
     pub quiet: bool,
 
     #[arg(long, global = true)]
@@ -54,4 +57,22 @@ pub struct ExtractArgs {
 
     #[arg(long)]
     pub overwrite: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::{Cli, Commands};
+
+    #[test]
+    fn parses_global_strict_option() {
+        let cli = Cli::try_parse_from([
+            "nata", "--strict", "extract", "in.pdf", "--pages", "1", "-o", "out.pdf",
+        ])
+        .expect("cli should parse");
+
+        assert!(cli.common.strict);
+        assert!(matches!(cli.command, Commands::Extract(_)));
+    }
 }

@@ -42,10 +42,18 @@ nata <command> [options]
 cargo run -- <command> [options]
 ```
 
+### 共通オプション
+
+- `--qpdf <path>`: 使用する `qpdf` 実行ファイルのパスを明示する
+- `--strict`: 維持保証できない文書レベル情報を検出した場合に処理を停止する
+- `--quiet`: 通常メッセージを抑制する
+- `--verbose`: 詳細ログを出力する
+
 ### merge
 
 ```bash
 nata merge a.pdf b.pdf -o merged.pdf
+nata --strict merge a.pdf b.pdf -o merged.pdf
 ```
 
 ### extract
@@ -54,6 +62,7 @@ nata merge a.pdf b.pdf -o merged.pdf
 nata extract input.pdf --pages 1-3 -o out.pdf
 nata extract input.pdf --pages 1,3,last -o out.pdf
 nata extract input.pdf --pages odd -o out.pdf
+nata --strict extract input.pdf --pages 1-3 -o out.pdf
 ```
 
 ページ指定では`1`, `1-5`, `1,3,5-8`, `all`, `last`, `odd`, `even`, `4-last`を使用できます。順序は維持され、重複指定も保持されます。
@@ -64,6 +73,21 @@ nata extract input.pdf --pages odd -o out.pdf
 - 既存の出力先は、`--overwrite`を指定しない限り上書きしません。
 - 処理失敗時に壊れた出力ファイルを残さないよう、一時ファイル経由で出力します。
 - ページ番号は1始まりです。
+- `--strict`指定時は、ページ操作で維持保証できない文書レベル情報を検出すると終了コード`5`で停止します。
+
+## strictモード
+
+`--strict`は、入力PDFに次のような文書レベル情報が含まれる場合に処理を止めます。
+
+- outlines / bookmarks
+- tagged PDF logical structure
+- AcroForm / forms
+- page labels
+- attachments / embedded files
+- document-level name trees
+- encryption / password protection
+
+`qpdf --json`の結果をもとに判定するため、実際に停止する項目は入力PDFの構造に依存します。
 
 ## License
 

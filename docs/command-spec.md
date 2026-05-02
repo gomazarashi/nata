@@ -47,6 +47,7 @@ nata <command> [options]
 - `--quiet`: 通常メッセージを抑制する
 - `--verbose`: 詳細ログを出力する
 - `--qpdf <path>`: 使用する `qpdf` のパスを明示する
+- `--strict`: 維持保証できない文書レベル情報を検出した場合に処理を停止する
 
 ## ページ指定
 
@@ -64,6 +65,28 @@ even
 ```
 
 ページ指定の順序は維持され、重複指定も許可する方針です。
+
+## strict モード
+
+- `--strict` 指定時は、入力 PDF の文書レベル情報を `qpdf --json` で検査します
+- 維持保証できない情報を検出した場合は、処理前に停止します
+- strict モード違反の終了コードは `5` です
+
+### strict 判定対象
+
+- outlines / bookmarks
+- tagged PDF logical structure
+- AcroForm / forms
+- page labels
+- attachments / embedded files
+- document-level name trees
+- encryption / password protection
+
+### strict モードの扱い
+
+- `merge` と `extract` の両方で有効です
+- `--strict` 未指定時は、これらの情報があっても通常どおり処理を続行します
+- 判定は入力 PDF に対してのみ行い、出力後 PDF の差分比較までは行いません
 
 ## 対応予定環境
 

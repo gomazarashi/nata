@@ -6,7 +6,9 @@ use crate::exit_code::ExitCode;
 
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("error: qpdf executable was not found\nhint: install qpdf and ensure it is available in PATH\nhint: or set NATA_QPDF=<path>\nhint: or pass --qpdf <path>")]
+    #[error(
+        "error: qpdf executable was not found\nhint: install qpdf and ensure it is available in PATH\nhint: or set NATA_QPDF=<path>\nhint: or pass --qpdf <path>"
+    )]
     QpdfNotFound,
 
     #[error("error: qpdf executable path is invalid: {path}")]
@@ -19,10 +21,7 @@ pub enum AppError {
     },
 
     #[error("error: qpdf command failed during {operation}: {detail}")]
-    QpdfCommandFailed {
-        operation: String,
-        detail: String,
-    },
+    QpdfCommandFailed { operation: String, detail: String },
 
     #[error("error: merge requires at least two input PDFs")]
     MergeRequiresAtLeastTwoInputs,
@@ -74,6 +73,9 @@ pub enum AppError {
 
     #[error("error: page specification resolved to no pages")]
     EmptyPageSelection,
+
+    #[error("error: strict mode rejected input PDF: {path}\ndetail: {detail}")]
+    StrictViolation { path: PathBuf, detail: String },
 }
 
 impl AppError {
@@ -98,6 +100,25 @@ impl AppError {
             | Self::SinglePageRequired
             | Self::EmptyPageSelection
             | Self::MergeRequiresAtLeastTwoInputs => ExitCode::CliArgumentError,
+            Self::StrictViolation { .. } => ExitCode::StrictViolation,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::AppError;
+    use crate::exit_code::ExitCode;
+
+    #[test]
+    fn strict_violation_uses_exit_code_five() {
+        let error = AppError::StrictViolation {
+            path: PathBuf::from("input.pdf"),
+            detail: "outlines/bookmarks".into(),
+        };
+
+        assert_eq!(error.exit_code(), ExitCode::StrictViolation);
     }
 }

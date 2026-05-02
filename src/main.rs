@@ -1,12 +1,15 @@
 mod cli;
 mod error;
-mod extract;
 mod exit_code;
+mod extract;
 mod io_support;
 mod merge;
 mod page_spec;
 mod qpdf_detector;
 mod qpdf_runner;
+mod strict;
+#[cfg(test)]
+mod test_support;
 
 use clap::Parser;
 use clap::error::ErrorKind;
@@ -52,7 +55,7 @@ fn try_run(cli: Cli) -> Result<(), AppError> {
     }
 
     match cli.command {
-        Commands::Merge(args) => merge::run(args, &qpdf),
-        Commands::Extract(args) => extract::run(args, &qpdf),
+        Commands::Merge(args) => merge::run(args, &cli.common, &qpdf),
+        Commands::Extract(args) => extract::run(args, &cli.common, &qpdf),
     }
 }
