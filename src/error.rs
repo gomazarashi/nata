@@ -41,6 +41,9 @@ pub enum AppError {
     #[error("error: output file already exists: {path}")]
     OutputAlreadyExists { path: PathBuf },
 
+    #[error("error: duplicate output path was requested: {path}")]
+    DuplicateOutputPath { path: PathBuf },
+
     #[error("error: output path is not a file: {path}")]
     OutputPathNotFile { path: PathBuf },
 
@@ -98,6 +101,7 @@ impl AppError {
             | Self::InputPdfNotFile { .. }
             | Self::InputPdfInvalid { .. } => ExitCode::InputPdfError,
             Self::OutputAlreadyExists { .. }
+            | Self::DuplicateOutputPath { .. }
             | Self::OutputPathNotFile { .. }
             | Self::OutputPathNotDirectory { .. }
             | Self::OutputDirectoryNotFound { .. }

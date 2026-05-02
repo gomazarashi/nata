@@ -92,7 +92,7 @@ pub fn prepare_multiple_outputs(
 
     for path in paths {
         if !seen.insert(path.clone()) {
-            return Err(AppError::OutputAlreadyExists { path: path.clone() });
+            return Err(AppError::DuplicateOutputPath { path: path.clone() });
         }
         prepared.push(prepare_single_output(path, overwrite)?);
     }
@@ -273,5 +273,18 @@ mod tests {
         };
 
         assert!(matches!(error, AppError::OutputAlreadyExists { path } if path == second));
+    }
+
+    #[test]
+    fn prepare_multiple_outputs_rejects_duplicate_requested_paths() {
+        let dir = tempdir().expect("temp dir should exist");
+        let output = dir.path().join("out.pdf");
+
+        let error = match prepare_multiple_outputs(&[output.clone(), output.clone()], false) {
+            Ok(_) => panic!("duplicate output paths should be rejected"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(error, AppError::DuplicateOutputPath { path } if path == output));
     }
 }
