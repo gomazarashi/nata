@@ -54,7 +54,7 @@ impl PdftoppmRunner {
             });
         }
 
-        let generated = prefix.with_file_name("rendered-1.png");
+        let generated = prefix.with_file_name(format!("rendered-{page}.png"));
         if !generated.is_file() {
             return Err(AppError::PdftoppmCommandFailed {
                 operation: "render_page_to_png".into(),
@@ -112,6 +112,22 @@ mod tests {
 
     #[test]
     fn render_page_to_png_moves_generated_file_to_output() {
+        let dir = tempdir().expect("temp dir should exist");
+        let input = dir.path().join("input.pdf");
+        let output = dir.path().join("page.png");
+        fs::write(&input, b"pdf").expect("input should exist");
+
+        let runner = PdftoppmRunner::new(create_pdftoppm_probe(dir.path(), true, false, None));
+
+        runner
+            .render_page_to_png(&input, 2, 150, &output)
+            .expect("render should succeed");
+
+        assert!(fs::read(&output).expect("png should exist").starts_with(b"png"));
+    }
+
+    #[test]
+    fn render_page_to_png_accepts_requested_page_numbered_output() {
         let dir = tempdir().expect("temp dir should exist");
         let input = dir.path().join("input.pdf");
         let output = dir.path().join("page.png");

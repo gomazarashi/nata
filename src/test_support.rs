@@ -99,7 +99,7 @@ pub fn create_pdftoppm_probe(
         };
         let script = if succeed {
             format!(
-                "@echo off\r\n{logging}if \"%1\"==\"-f\" (\r\n  if not \"{}\"==\"true\" (\r\n    >\"%9-1.png\" echo png\r\n  )\r\n  exit /b 0\r\n)\r\n>&2 echo unexpected call\r\nexit /b 1\r\n",
+                "@echo off\r\n{logging}if \"%1\"==\"-f\" (\r\n  if not \"{}\"==\"true\" (\r\n    >\"%9-%2.png\" echo png\r\n  )\r\n  exit /b 0\r\n)\r\n>&2 echo unexpected call\r\nexit /b 1\r\n",
                 if skip_output { "true" } else { "false" }
             )
         } else {
@@ -121,7 +121,7 @@ pub fn create_pdftoppm_probe(
         };
         let script = if succeed {
             format!(
-                "#!/bin/sh\n{logging}if [ \"$1\" = \"-f\" ]; then\n  if [ \"{}\" != \"true\" ]; then\n    printf 'png' > \"$9-1.png\"\n  fi\n  exit 0\nfi\necho unexpected call >&2\nexit 1\n",
+                "#!/bin/sh\n{logging}if [ \"$1\" = \"-f\" ]; then\n  if [ \"{}\" != \"true\" ]; then\n    printf 'png' > \"$9-$2.png\"\n  fi\n  exit 0\nfi\necho unexpected call >&2\nexit 1\n",
                 if skip_output { "true" } else { "false" }
             )
         } else {
