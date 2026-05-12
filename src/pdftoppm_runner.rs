@@ -54,7 +54,18 @@ impl PdftoppmRunner {
             });
         }
 
-        let generated = prefix.with_file_name(format!("rendered-{page}.png"));
+        let generated = find_generated_png(temp_dir.path()).ok_or_else(|| AppError::PdftoppmCommandFailed {
+            operation: "render_page_to_png".into(),
+            detail: "pdftoppm did not produce the expected PNG output".into(),
+        })?;
+
+        if generated.parent() != Some(temp_dir.path()) {
+            return Err(AppError::PdftoppmCommandFailed {
+                operation: "render_page_to_png".into(),
+                detail: "pdftoppm produced an unexpected PNG output path".into(),
+            });
+        }
+
         if !generated.is_file() {
             return Err(AppError::PdftoppmCommandFailed {
                 operation: "render_page_to_png".into(),
@@ -100,13 +111,28 @@ fn stderr_summary(stderr: &[u8]) -> String {
     }
 }
 
+fn find_generated_png(dir: &Path) -> Option<PathBuf> {
+    let mut pngs = fs::read_dir(dir)
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("png")))
+        .collect::<Vec<_>>();
+
+    if pngs.len() == 1 {
+        pngs.pop()
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
 
     use tempfile::tempdir;
 
-    use super::PdftoppmRunner;
+    use super::{PdftoppmRunner, find_generated_png};
     use crate::error::AppError;
     use crate::test_support::create_pdftoppm_probe;
 
@@ -156,5 +182,14 @@ mod tests {
             Err(AppError::PdftoppmCommandFailed { operation, detail })
                 if operation == "render_page_to_png" && detail.contains("render failure")
         ));
+    }
+
+    #[test]
+    fn find_generated_png_accepts_zero_padded_name() {
+        let dir = tempdir().expect("temp dir should exist");
+        let png = dir.path().join("rendered-01.png");
+        fs::write(&png, b"png").expect("png should exist");
+
+        assert_eq!(find_generated_png(dir.path()), Some(png));
     }
 }
