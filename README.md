@@ -6,7 +6,7 @@ PDFの内容を再レンダリングするのではなく、既存PDFのペー�
 
 ## 前提
 
-`nata`の利用には`qpdf`が必要です。`nata`自体は`qpdf`を同梱せず、`--qpdf`、`NATA_QPDF`、`PATH`の順で使用する実行ファイルを検出します。
+`nata` はPDF再構成に `qpdf`、PNG描画に `pdftoppm` を使います。`qpdf` は `--qpdf`、`NATA_QPDF`、`PATH` の順で、`pdftoppm` は `--pdftoppm`、`NATA_PDFTOPPM`、`PATH` の順で検出します。
 
 ## インストール
 
@@ -22,6 +22,7 @@ cargo install --path .
 
 - `merge`: 複数のPDFを結合する
 - `extract`: 指定ページを取り出す
+- `render`: 指定ページをPNGへ変換する
 - `split`: PDFを複数ファイルに分割する
 
 ## 今後追加予定のコマンド
@@ -45,6 +46,7 @@ cargo run -- <command> [options]
 ### 共通オプション
 
 - `--qpdf <path>`: 使用する `qpdf` 実行ファイルのパスを明示する
+- `--pdftoppm <path>`: 使用する `pdftoppm` 実行ファイルのパスを明示する
 - `--strict`: 維持保証できない文書レベル情報を検出した場合に処理を停止する
 - `--quiet`: 通常メッセージを抑制する
 - `--verbose`: 詳細ログを出力する
@@ -65,6 +67,16 @@ nata extract input.pdf --pages odd -o out.pdf
 nata --strict extract input.pdf --pages 1-3 -o out.pdf
 ```
 
+### render
+
+```bash
+nata render input.pdf -d out
+nata render input.pdf --pages 1,3,last -d out
+nata render input.pdf --pages odd -d out --dpi 200
+```
+
+`render` は `<output-dir>/<入力stem>-<page>.png` の形式でPNGを出力します。重複ページ指定などで同名出力が発生する場合は `-2`, `-3` のsuffixを付けて共存させます。`--strict` は受け付けますが、`render` では文書レベル情報検査を行いません。
+
 ### split
 
 ```bash
@@ -81,6 +93,7 @@ nata --strict split input.pdf --each-page -d out
 ## 共通仕様
 
 - 出力は常に新しいPDFとして生成します。
+- `render` はページごとに新しいPNGとして生成します。
 - 既存の出力先は、`--overwrite`を指定しない限り上書きしません。
 - 処理失敗時に壊れた出力ファイルを残さないよう、一時ファイル経由で出力します。
 - ページ番号は1始まりです。

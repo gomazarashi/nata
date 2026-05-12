@@ -412,6 +412,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_extract_probe(dir.path(), 3, true));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,
@@ -462,6 +463,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_extract_probe(dir.path(), 2, true));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,
@@ -490,6 +492,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_invalid_pdf_qpdf_probe(dir.path(), &json_marker));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: true,
             quiet: false,
             verbose: false,
@@ -524,6 +527,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_extract_probe_with_log(dir.path(), 5, &log_path, true));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,
