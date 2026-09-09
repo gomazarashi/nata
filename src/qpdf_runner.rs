@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::process::Stdio;
 
 use tempfile::NamedTempFile;
 
+use crate::command_support;
 use crate::error::AppError;
 use crate::strict::StrictInspection;
 
@@ -21,8 +21,7 @@ impl QpdfRunner {
     }
 
     pub fn show_npages(&self, input: &Path) -> Result<u32, AppError> {
-        let output = self
-            .new_command()
+        let output = command_support::new_command(&self.executable)
             .arg("--show-npages")
             .arg(input)
             .output()
@@ -34,7 +33,7 @@ impl QpdfRunner {
         if !output.status.success() {
             return Err(AppError::InputPdfInvalid {
                 path: input.to_path_buf(),
-                detail: stderr_summary(&output.stderr),
+                detail: command_support::stderr_summary("qpdf", &output.stderr),
             });
         }
 
@@ -62,8 +61,7 @@ impl QpdfRunner {
                 source,
             })?;
 
-        let output = self
-            .new_command()
+        let output = command_support::new_command(&self.executable)
             .arg("--json")
             .arg(input)
             .stdout(Stdio::from(json_output))
@@ -77,7 +75,7 @@ impl QpdfRunner {
         if !output.status.success() {
             return Err(AppError::QpdfCommandFailed {
                 operation: STRICT_INSPECTION_OPERATION.into(),
-                detail: stderr_summary(&output.stderr),
+                detail: command_support::stderr_summary("qpdf", &output.stderr),
             });
         }
 
@@ -101,8 +99,7 @@ impl QpdfRunner {
         page_range: &str,
         output: &Path,
     ) -> Result<(), AppError> {
-        let output_result = self
-            .new_command()
+        let output_result = command_support::new_command(&self.executable)
             .arg(input)
             .arg("--pages")
             .arg(".")
@@ -118,7 +115,7 @@ impl QpdfRunner {
         if !output_result.status.success() {
             return Err(AppError::QpdfCommandFailed {
                 operation: "extract_pages".into(),
-                detail: stderr_summary(&output_result.stderr),
+                detail: command_support::stderr_summary("qpdf", &output_result.stderr),
             });
         }
 
@@ -126,7 +123,7 @@ impl QpdfRunner {
     }
 
     pub fn merge_pdfs(&self, inputs: &[PathBuf], output: &Path) -> Result<(), AppError> {
-        let mut command = self.new_command();
+        let mut command = command_support::new_command(&self.executable);
         command.arg("--empty").arg("--pages");
         command.args(inputs);
 
@@ -140,40 +137,11 @@ impl QpdfRunner {
         if !output_result.status.success() {
             return Err(AppError::QpdfCommandFailed {
                 operation: "merge_pdfs".into(),
-                detail: stderr_summary(&output_result.stderr),
+                detail: command_support::stderr_summary("qpdf", &output_result.stderr),
             });
         }
 
         Ok(())
-    }
-
-    fn new_command(&self) -> Command {
-        #[cfg(windows)]
-        {
-            if is_windows_batch_wrapper(&self.executable) {
-                let mut command = Command::new("cmd.exe");
-                command.arg("/C").arg(&self.executable);
-                return command;
-            }
-        }
-
-        Command::new(&self.executable)
-    }
-}
-
-#[cfg(windows)]
-fn is_windows_batch_wrapper(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
-}
-
-fn stderr_summary(stderr: &[u8]) -> String {
-    let text = String::from_utf8_lossy(stderr).trim().to_string();
-    if text.is_empty() {
-        "qpdf did not provide error details".into()
-    } else {
-        text
     }
 }
 

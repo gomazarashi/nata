@@ -112,6 +112,85 @@ pub fn output_path_identity(path: &Path) -> String {
     }
 }
 
+pub fn ensure_output_differs_from_inputs(
+    output: &Path,
+    inputs: &[PathBuf],
+) -> Result<(), AppError> {
+    let output_path = std::fs::canonicalize(output).unwrap_or_else(|_| output.to_path_buf());
+
+    for input in inputs {
+        let input_path =
+            std::fs::canonicalize(input).map_err(|source| AppError::InputPdfInvalid {
+                path: input.clone(),
+                detail: format!("failed to resolve input path: {source}"),
+            })?;
+
+        if input_path == output_path {
+            return Err(AppError::OutputPathMatchesInput {
+                path: output.to_path_buf(),
+            });
+        }
+    }
+
+    Ok(())
+}
+
+pub fn input_stem(input: &Path) -> String {
+    let stem = input
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .map(str::trim)
+        .unwrap_or_default();
+
+    if stem.is_empty() {
+        "input".into()
+    } else {
+        stem.into()
+    }
+}
+
+pub fn dedup_output_paths(
+    paths: Vec<PathBuf>,
+    default_stem: &str,
+    default_extension: &str,
+) -> Vec<PathBuf> {
+    let mut used_paths = HashSet::<String>::new();
+
+    paths
+        .into_iter()
+        .map(|original| {
+            let mut candidate = original.clone();
+            let mut suffix = 2;
+
+            while !used_paths.insert(output_path_identity(&candidate)) {
+                candidate =
+                    with_duplicate_suffix(&original, suffix, default_stem, default_extension);
+                suffix += 1;
+            }
+
+            candidate
+        })
+        .collect()
+}
+
+pub fn with_duplicate_suffix(
+    path: &Path,
+    count: u32,
+    default_stem: &str,
+    default_extension: &str,
+) -> PathBuf {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(default_stem);
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or(default_extension);
+    parent.join(format!("{stem}-{count}.{extension}"))
+}
+
 pub struct PendingOutput {
     final_path: PathBuf,
     temp_path: TempPath,

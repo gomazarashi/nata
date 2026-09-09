@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use tempfile::TempDir;
 
+use crate::command_support;
 use crate::error::AppError;
 
 #[derive(Debug, Clone)]
@@ -31,8 +31,7 @@ impl PdftoppmRunner {
             })?;
         let prefix = temp_dir.path().join("rendered");
 
-        let output_result = self
-            .new_command()
+        let output_result = command_support::new_command(&self.executable)
             .arg("-f")
             .arg(page.to_string())
             .arg("-l")
@@ -51,7 +50,7 @@ impl PdftoppmRunner {
         if !output_result.status.success() {
             return Err(AppError::PdftoppmCommandFailed {
                 operation: "render_page_to_png".into(),
-                detail: stderr_summary(&output_result.stderr),
+                detail: command_support::stderr_summary("pdftoppm", &output_result.stderr),
             });
         }
 
@@ -81,35 +80,6 @@ impl PdftoppmRunner {
         })?;
 
         Ok(())
-    }
-
-    fn new_command(&self) -> Command {
-        #[cfg(windows)]
-        {
-            if is_windows_batch_wrapper(&self.executable) {
-                let mut command = Command::new("cmd.exe");
-                command.arg("/C").arg(&self.executable);
-                return command;
-            }
-        }
-
-        Command::new(&self.executable)
-    }
-}
-
-#[cfg(windows)]
-fn is_windows_batch_wrapper(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
-}
-
-fn stderr_summary(stderr: &[u8]) -> String {
-    let text = String::from_utf8_lossy(stderr).trim().to_string();
-    if text.is_empty() {
-        "pdftoppm did not provide error details".into()
-    } else {
-        text
     }
 }
 

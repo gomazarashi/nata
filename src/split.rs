@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::cli::{CommonOptions, SplitArgs};
 use crate::error::AppError;
 use crate::io_support::{
-    ensure_output_directory, output_path_identity, prepare_multiple_outputs, validate_input_pdf,
+    dedup_output_paths, ensure_output_directory, input_stem, prepare_multiple_outputs,
+    validate_input_pdf,
 };
 use crate::page_spec::{PageSpec, PageSpecRules};
 use crate::qpdf_runner::QpdfRunner;
@@ -51,7 +51,20 @@ fn build_split_plan(args: &SplitArgs, total_pages: u32) -> Result<Vec<SplitPlanE
         build_chunk_entries(&input_stem, &args.output_dir, total_pages, chunk_size)
     };
 
-    Ok(apply_duplicate_suffixes(raw_entries))
+    let output_paths = raw_entries
+        .iter()
+        .map(|entry| entry.output_path.clone())
+        .collect::<Vec<_>>();
+    let deduped_paths = dedup_output_paths(output_paths, "input", "pdf");
+
+    Ok(raw_entries
+        .into_iter()
+        .zip(deduped_paths)
+        .map(|(mut entry, output_path)| {
+            entry.output_path = output_path;
+            entry
+        })
+        .collect())
 }
 
 fn build_range_entries(
@@ -104,38 +117,6 @@ fn build_chunk_entries(
     entries
 }
 
-fn apply_duplicate_suffixes(entries: Vec<SplitPlanEntry>) -> Vec<SplitPlanEntry> {
-    let mut used_paths = HashSet::<String>::new();
-
-    entries
-        .into_iter()
-        .map(|mut entry| {
-            let original_output_path = entry.output_path.clone();
-            let mut suffix = 2;
-
-            while !used_paths.insert(output_path_identity(&entry.output_path)) {
-                entry.output_path = with_duplicate_suffix(&original_output_path, suffix);
-                suffix += 1;
-            }
-
-            entry
-        })
-        .collect()
-}
-
-fn with_duplicate_suffix(path: &Path, count: u32) -> PathBuf {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let stem = path
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or("input");
-    let extension = path
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or("pdf");
-    parent.join(format!("{stem}-{count}.{extension}"))
-}
-
 fn normalize_label(input: &str) -> String {
     let sanitized = input
         .chars()
@@ -155,20 +136,6 @@ fn normalize_label(input: &str) -> String {
     }
 }
 
-fn input_stem(input: &Path) -> String {
-    let stem = input
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .map(str::trim)
-        .unwrap_or_default();
-
-    if stem.is_empty() {
-        "input".into()
-    } else {
-        stem.into()
-    }
-}
-
 fn range_label(start: u32, end: u32) -> String {
     if start == end {
         start.to_string()
@@ -185,9 +152,10 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::{SplitPlanEntry, apply_duplicate_suffixes, build_split_plan, run};
+    use super::{SplitPlanEntry, build_split_plan, run};
     use crate::cli::{CommonOptions, SplitArgs};
     use crate::error::AppError;
+    use crate::io_support::dedup_output_paths;
     use crate::qpdf_runner::QpdfRunner;
     use crate::test_support::create_invalid_pdf_qpdf_probe;
 
@@ -424,7 +392,7 @@ mod tests {
     #[test]
     fn split_plan_avoids_case_only_output_collisions_on_windows() {
         let dir = tempdir().expect("temp dir should exist");
-        let entries = vec![
+        let entries = [
             SplitPlanEntry {
                 output_path: dir.path().join("input-Out.pdf"),
                 page_range: "1".into(),
@@ -435,16 +403,14 @@ mod tests {
             },
         ];
 
-        let outputs = apply_duplicate_suffixes(entries)
+        let paths = entries
             .iter()
-            .map(|entry| {
-                entry
-                    .output_path
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string()
-            })
+            .map(|entry| entry.output_path.clone())
+            .collect::<Vec<_>>();
+
+        let outputs = dedup_output_paths(paths, "input", "pdf")
+            .iter()
+            .map(|path| path.file_name().unwrap().to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
         assert_eq!(outputs, vec!["input-Out.pdf", "input-out-2.pdf"]);

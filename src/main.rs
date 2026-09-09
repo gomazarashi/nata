@@ -1,4 +1,5 @@
 mod cli;
+mod command_support;
 mod error;
 mod exit_code;
 mod extract;
