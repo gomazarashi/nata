@@ -128,16 +128,8 @@ mod tests {
 
     #[test]
     fn parses_split_command() {
-        let cli = Cli::try_parse_from([
-            "nata",
-            "split",
-            "in.pdf",
-            "--every",
-            "2",
-            "-d",
-            "out",
-        ])
-        .expect("cli should parse");
+        let cli = Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "2", "-d", "out"])
+            .expect("cli should parse");
 
         let Commands::Split(args) = cli.command else {
             panic!("split command should parse");
@@ -180,8 +172,7 @@ mod tests {
     #[test]
     fn split_rejects_zero_every() {
         assert!(
-            Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "0", "-d", "out"])
-                .is_err()
+            Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "0", "-d", "out"]).is_err()
         );
     }
 

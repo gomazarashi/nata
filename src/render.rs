@@ -53,7 +53,10 @@ fn render_entry(
     Ok(())
 }
 
-fn build_render_plan(args: &RenderArgs, total_pages: u32) -> Result<Vec<RenderPlanEntry>, AppError> {
+fn build_render_plan(
+    args: &RenderArgs,
+    total_pages: u32,
+) -> Result<Vec<RenderPlanEntry>, AppError> {
     let spec = PageSpec::parse(&args.pages)?;
     let pages = spec.validate_rules(
         total_pages,
@@ -97,8 +100,14 @@ fn apply_duplicate_suffixes(entries: Vec<RenderPlanEntry>) -> Vec<RenderPlanEntr
 
 fn with_duplicate_suffix(path: &Path, count: u32) -> PathBuf {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let stem = path.file_stem().and_then(|value| value.to_str()).unwrap_or("output");
-    let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("png");
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("output");
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("png");
     parent.join(format!("{stem}-{count}.{extension}"))
 }
 
@@ -129,7 +138,9 @@ mod tests {
     use crate::error::AppError;
     use crate::pdftoppm_runner::PdftoppmRunner;
     use crate::qpdf_runner::QpdfRunner;
-    use crate::test_support::{create_extract_probe_with_log, create_invalid_pdf_qpdf_probe, create_pdftoppm_probe};
+    use crate::test_support::{
+        create_extract_probe_with_log, create_invalid_pdf_qpdf_probe, create_pdftoppm_probe,
+    };
 
     #[test]
     fn render_plan_defaults_to_page_numbered_pngs() {
@@ -145,7 +156,14 @@ mod tests {
         let plan = build_render_plan(&args, 5).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
         let pages = plan.iter().map(|entry| entry.page).collect::<Vec<_>>();
 
@@ -167,10 +185,20 @@ mod tests {
         let plan = build_render_plan(&args, 3).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
 
-        assert_eq!(outputs, vec!["input-1.png", "input-1-2.png", "input-1-3.png"]);
+        assert_eq!(
+            outputs,
+            vec!["input-1.png", "input-1-2.png", "input-1-3.png"]
+        );
     }
 
     #[test]
@@ -201,7 +229,12 @@ mod tests {
         let log_path = dir.path().join("render.log");
         fs::write(&input, b"pdf").expect("input file should exist");
 
-        let qpdf = QpdfRunner::new(create_extract_probe_with_log(dir.path(), 4, &dir.path().join("unused.log"), true));
+        let qpdf = QpdfRunner::new(create_extract_probe_with_log(
+            dir.path(),
+            4,
+            &dir.path().join("unused.log"),
+            true,
+        ));
         let pdftoppm = PdftoppmRunner::new(create_pdftoppm_probe(
             dir.path(),
             true,
@@ -245,7 +278,12 @@ mod tests {
         fs::create_dir_all(&output_dir).expect("output dir should exist");
         fs::write(output_dir.join("input-1.png"), b"existing").expect("existing output");
 
-        let qpdf = QpdfRunner::new(create_extract_probe_with_log(dir.path(), 2, &dir.path().join("unused.log"), true));
+        let qpdf = QpdfRunner::new(create_extract_probe_with_log(
+            dir.path(),
+            2,
+            &dir.path().join("unused.log"),
+            true,
+        ));
         let pdftoppm = PdftoppmRunner::new(create_pdftoppm_probe(dir.path(), true, false, None));
         let common = CommonOptions {
             qpdf: None,
@@ -262,7 +300,8 @@ mod tests {
             overwrite: false,
         };
 
-        let error = run(args, &common, &qpdf, &pdftoppm).expect_err("existing output should be rejected");
+        let error =
+            run(args, &common, &qpdf, &pdftoppm).expect_err("existing output should be rejected");
         assert!(matches!(error, AppError::OutputAlreadyExists { .. }));
     }
 
@@ -275,7 +314,12 @@ mod tests {
         fs::create_dir_all(&output_dir).expect("output dir should exist");
         fs::write(output_dir.join("input-1.png"), b"existing").expect("existing output");
 
-        let qpdf = QpdfRunner::new(create_extract_probe_with_log(dir.path(), 1, &dir.path().join("unused.log"), true));
+        let qpdf = QpdfRunner::new(create_extract_probe_with_log(
+            dir.path(),
+            1,
+            &dir.path().join("unused.log"),
+            true,
+        ));
         let pdftoppm = PdftoppmRunner::new(create_pdftoppm_probe(dir.path(), true, false, None));
         let common = CommonOptions {
             qpdf: None,
@@ -340,7 +384,12 @@ mod tests {
         let output_dir = dir.path().join("out");
         fs::write(&input, b"pdf").expect("input file should exist");
 
-        let qpdf = QpdfRunner::new(create_extract_probe_with_log(dir.path(), 1, &dir.path().join("unused.log"), true));
+        let qpdf = QpdfRunner::new(create_extract_probe_with_log(
+            dir.path(),
+            1,
+            &dir.path().join("unused.log"),
+            true,
+        ));
         let pdftoppm = PdftoppmRunner::new(create_pdftoppm_probe(dir.path(), false, false, None));
         let common = CommonOptions {
             qpdf: None,

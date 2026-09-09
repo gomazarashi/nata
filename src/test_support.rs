@@ -77,8 +77,7 @@ pub fn create_extract_probe_with_log(
             .expect("probe script should exist")
             .permissions();
         permissions.set_mode(0o755);
-        fs::set_permissions(&script_path, permissions)
-            .expect("probe script should be executable");
+        fs::set_permissions(&script_path, permissions).expect("probe script should be executable");
         script_path
     }
 }
@@ -132,8 +131,7 @@ pub fn create_pdftoppm_probe(
             .expect("probe script should exist")
             .permissions();
         permissions.set_mode(0o755);
-        fs::set_permissions(&script_path, permissions)
-            .expect("probe script should be executable");
+        fs::set_permissions(&script_path, permissions).expect("probe script should be executable");
         script_path
     }
 }

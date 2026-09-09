@@ -24,10 +24,11 @@ impl PdftoppmRunner {
         output: &Path,
     ) -> Result<(), AppError> {
         let parent = output.parent().unwrap_or_else(|| Path::new("."));
-        let temp_dir = TempDir::new_in(parent).map_err(|source| AppError::PdftoppmExecutionFailed {
-            operation: "render_page_to_png".into(),
-            source,
-        })?;
+        let temp_dir =
+            TempDir::new_in(parent).map_err(|source| AppError::PdftoppmExecutionFailed {
+                operation: "render_page_to_png".into(),
+                source,
+            })?;
         let prefix = temp_dir.path().join("rendered");
 
         let output_result = self
@@ -54,10 +55,11 @@ impl PdftoppmRunner {
             });
         }
 
-        let generated = find_generated_png(temp_dir.path()).ok_or_else(|| AppError::PdftoppmCommandFailed {
-            operation: "render_page_to_png".into(),
-            detail: "pdftoppm did not produce the expected PNG output".into(),
-        })?;
+        let generated =
+            find_generated_png(temp_dir.path()).ok_or_else(|| AppError::PdftoppmCommandFailed {
+                operation: "render_page_to_png".into(),
+                detail: "pdftoppm did not produce the expected PNG output".into(),
+            })?;
 
         if generated.parent() != Some(temp_dir.path()) {
             return Err(AppError::PdftoppmCommandFailed {
@@ -116,14 +118,14 @@ fn find_generated_png(dir: &Path) -> Option<PathBuf> {
         .ok()?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("png")))
+        .filter(|path| {
+            path.extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+        })
         .collect::<Vec<_>>();
 
-    if pngs.len() == 1 {
-        pngs.pop()
-    } else {
-        None
-    }
+    if pngs.len() == 1 { pngs.pop() } else { None }
 }
 
 #[cfg(test)]
@@ -149,7 +151,11 @@ mod tests {
             .render_page_to_png(&input, 2, 150, &output)
             .expect("render should succeed");
 
-        assert!(fs::read(&output).expect("png should exist").starts_with(b"png"));
+        assert!(
+            fs::read(&output)
+                .expect("png should exist")
+                .starts_with(b"png")
+        );
     }
 
     #[test]
@@ -165,7 +171,11 @@ mod tests {
             .render_page_to_png(&input, 2, 150, &output)
             .expect("render should succeed");
 
-        assert!(fs::read(&output).expect("png should exist").starts_with(b"png"));
+        assert!(
+            fs::read(&output)
+                .expect("png should exist")
+                .starts_with(b"png")
+        );
     }
 
     #[test]
