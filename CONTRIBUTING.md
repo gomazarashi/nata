@@ -33,6 +33,11 @@ cargo test
 
 `cargo fmt --check` が失敗したら `cargo fmt` を適用する。PRにCIはないため、手元で上記3点を必ず通す。
 
+## バージョニング
+
+- 版番号は SemVer に準拠する (`Cargo.toml` とタグ `vX.Y.Z` を対応させる)
+- `CHANGELOG.md` は Keep a Changelog 形式に従う (`[Unreleased]`・`### Added`・版と日付)
+
 ## リリース手順 (develop -> main)
 
 1. `develop` で `Cargo.toml` の版上げと `CHANGELOG.md` の `[Unreleased]` -> `vX.Y.Z` 昇格を行う
