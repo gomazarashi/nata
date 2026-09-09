@@ -1,11 +1,10 @@
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::cli::{CommonOptions, RenderArgs};
 use crate::error::AppError;
 use crate::io_support::{
-    PendingOutput, ensure_output_directory, output_path_identity, prepare_multiple_outputs,
-    validate_input_pdf,
+    PendingOutput, dedup_output_paths, ensure_output_directory, input_stem,
+    prepare_multiple_outputs, validate_input_pdf,
 };
 use crate::page_spec::{PageSpec, PageSpecRules};
 use crate::pdftoppm_runner::PdftoppmRunner;
@@ -75,54 +74,20 @@ fn build_render_plan(
             page,
         })
         .collect::<Vec<_>>();
+    let output_paths = entries
+        .iter()
+        .map(|entry| entry.output_path.clone())
+        .collect::<Vec<_>>();
+    let deduped_paths = dedup_output_paths(output_paths, "output", "png");
 
-    Ok(apply_duplicate_suffixes(entries))
-}
-
-fn apply_duplicate_suffixes(entries: Vec<RenderPlanEntry>) -> Vec<RenderPlanEntry> {
-    let mut used_paths = HashSet::<String>::new();
-
-    entries
+    Ok(entries
         .into_iter()
-        .map(|mut entry| {
-            let original_output_path = entry.output_path.clone();
-            let mut suffix = 2;
-
-            while !used_paths.insert(output_path_identity(&entry.output_path)) {
-                entry.output_path = with_duplicate_suffix(&original_output_path, suffix);
-                suffix += 1;
-            }
-
+        .zip(deduped_paths)
+        .map(|(mut entry, output_path)| {
+            entry.output_path = output_path;
             entry
         })
-        .collect()
-}
-
-fn with_duplicate_suffix(path: &Path, count: u32) -> PathBuf {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let stem = path
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or("output");
-    let extension = path
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or("png");
-    parent.join(format!("{stem}-{count}.{extension}"))
-}
-
-fn input_stem(input: &Path) -> String {
-    let stem = input
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .map(str::trim)
-        .unwrap_or_default();
-
-    if stem.is_empty() {
-        "input".into()
-    } else {
-        stem.into()
-    }
+        .collect())
 }
 
 #[cfg(test)]

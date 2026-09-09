@@ -1,16 +1,16 @@
-use std::fs;
-
 use crate::cli::CommonOptions;
 use crate::cli::ExtractArgs;
 use crate::error::AppError;
-use crate::io_support::{prepare_single_output, validate_input_pdf};
+use crate::io_support::{
+    ensure_output_differs_from_inputs, prepare_single_output, validate_input_pdf,
+};
 use crate::page_spec::{PageSpec, PageSpecRules};
 use crate::qpdf_runner::QpdfRunner;
 use crate::strict;
 
 pub fn run(args: ExtractArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result<(), AppError> {
     validate_input_pdf(&args.input)?;
-    ensure_output_differs_from_input(&args.output, &args.input)?;
+    ensure_output_differs_from_inputs(&args.output, std::slice::from_ref(&args.input))?;
     let total_pages = qpdf.show_npages(&args.input)?;
     strict::enforce_on_input(
         &args.input,
@@ -37,25 +37,6 @@ pub fn run(args: ExtractArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Resu
     Ok(())
 }
 
-fn ensure_output_differs_from_input(
-    output: &std::path::Path,
-    input: &std::path::Path,
-) -> Result<(), AppError> {
-    let output_path = fs::canonicalize(output).unwrap_or_else(|_| output.to_path_buf());
-    let input_path = fs::canonicalize(input).map_err(|source| AppError::InputPdfInvalid {
-        path: input.to_path_buf(),
-        detail: format!("failed to resolve input path: {source}"),
-    })?;
-
-    if input_path == output_path {
-        return Err(AppError::OutputPathMatchesInput {
-            path: output.to_path_buf(),
-        });
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -63,9 +44,10 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::{ensure_output_differs_from_input, run};
+    use super::run;
     use crate::cli::{CommonOptions, ExtractArgs};
     use crate::error::AppError;
+    use crate::io_support::ensure_output_differs_from_inputs;
     use crate::qpdf_runner::QpdfRunner;
     use crate::test_support::create_invalid_pdf_qpdf_probe;
 
@@ -76,7 +58,10 @@ mod tests {
         fs::write(&input, b"pdf").expect("input file should be created");
 
         assert!(matches!(
-            ensure_output_differs_from_input(PathBuf::from(&input).as_path(), input.as_path()),
+            ensure_output_differs_from_inputs(
+                PathBuf::from(&input).as_path(),
+                std::slice::from_ref(&input)
+            ),
             Err(AppError::OutputPathMatchesInput { .. })
         ));
     }

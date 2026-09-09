@@ -1,9 +1,9 @@
-use std::fs;
-
 use crate::cli::CommonOptions;
 use crate::cli::MergeArgs;
 use crate::error::AppError;
-use crate::io_support::{prepare_single_output, validate_input_pdf};
+use crate::io_support::{
+    ensure_output_differs_from_inputs, prepare_single_output, validate_input_pdf,
+};
 use crate::qpdf_runner::QpdfRunner;
 use crate::strict;
 
@@ -29,28 +29,6 @@ pub fn run(args: MergeArgs, common: &CommonOptions, qpdf: &QpdfRunner) -> Result
     Ok(())
 }
 
-fn ensure_output_differs_from_inputs(
-    output: &std::path::Path,
-    inputs: &[std::path::PathBuf],
-) -> Result<(), AppError> {
-    let output_path = fs::canonicalize(output).unwrap_or_else(|_| output.to_path_buf());
-
-    for input in inputs {
-        let input_path = fs::canonicalize(input).map_err(|source| AppError::InputPdfInvalid {
-            path: input.clone(),
-            detail: format!("failed to resolve input path: {source}"),
-        })?;
-
-        if input_path == output_path {
-            return Err(AppError::OutputPathMatchesInput {
-                path: output.to_path_buf(),
-            });
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -61,7 +39,8 @@ mod tests {
     use crate::error::AppError;
     use tempfile::tempdir;
 
-    use super::{ensure_output_differs_from_inputs, run};
+    use super::run;
+    use crate::io_support::ensure_output_differs_from_inputs;
     use crate::qpdf_runner::QpdfRunner;
     use crate::test_support::create_invalid_pdf_qpdf_probe;
 
