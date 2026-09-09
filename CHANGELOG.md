@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- `render` コマンドを実装
+- `pdftoppm` 検出を実装
+
 ##  [v0.2.0] - 2026-05-02
 
 ### Added
