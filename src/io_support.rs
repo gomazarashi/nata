@@ -1,6 +1,6 @@
+use std::collections::HashSet;
 #[cfg(test)]
 use std::fs;
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use tempfile::{Builder, TempPath};
@@ -321,6 +321,8 @@ mod tests {
             Err(error) => error,
         };
 
-        assert!(matches!(error, AppError::DuplicateOutputPath { path } if path == dir.path().join("out.pdf")));
+        assert!(
+            matches!(error, AppError::DuplicateOutputPath { path } if path == dir.path().join("out.pdf"))
+        );
     }
 }

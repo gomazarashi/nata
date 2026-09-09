@@ -74,10 +74,8 @@ fn build_range_entries(
             )?;
 
             Ok(SplitPlanEntry {
-                output_path: output_dir.join(format!(
-                    "{input_stem}-{}.pdf",
-                    normalize_label(raw.trim())
-                )),
+                output_path: output_dir
+                    .join(format!("{input_stem}-{}.pdf", normalize_label(raw.trim()))),
                 page_range: spec.to_qpdf_range(),
             })
         })
@@ -127,8 +125,14 @@ fn apply_duplicate_suffixes(entries: Vec<SplitPlanEntry>) -> Vec<SplitPlanEntry>
 
 fn with_duplicate_suffix(path: &Path, count: u32) -> PathBuf {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let stem = path.file_stem().and_then(|value| value.to_str()).unwrap_or("input");
-    let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("pdf");
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("input");
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("pdf");
     parent.join(format!("{stem}-{count}.{extension}"))
 }
 
@@ -202,7 +206,14 @@ mod tests {
         let plan = build_split_plan(&args, 3).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
 
         assert_eq!(outputs, vec!["input-1.pdf", "input-2.pdf", "input-3.pdf"]);
@@ -223,7 +234,14 @@ mod tests {
         let plan = build_split_plan(&args, 5).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
         let ranges = plan
             .iter()
@@ -252,7 +270,14 @@ mod tests {
         let plan = build_split_plan(&args, 5).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
         let ranges = plan
             .iter()
@@ -294,7 +319,14 @@ mod tests {
         let plan = build_split_plan(&args, 3).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
 
         assert_eq!(outputs, vec!["input-1_2.pdf", "input-1_2-2.pdf"]);
@@ -315,7 +347,14 @@ mod tests {
         let plan = build_split_plan(&args, 3).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
 
         assert_eq!(
@@ -329,12 +368,7 @@ mod tests {
         let dir = tempdir().expect("temp dir should exist");
         let args = SplitArgs {
             input: PathBuf::from("input.pdf"),
-            ranges: vec![
-                "1,2".into(),
-                "1 , 2".into(),
-                "1, 2".into(),
-                "1,2 ".into(),
-            ],
+            ranges: vec!["1,2".into(), "1 , 2".into(), "1, 2".into(), "1,2 ".into()],
             every: None,
             each_page: false,
             output_dir: dir.path().join("out"),
@@ -344,7 +378,14 @@ mod tests {
         let plan = build_split_plan(&args, 4).expect("plan should build");
         let outputs = plan
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
 
         assert_eq!(
@@ -396,7 +437,14 @@ mod tests {
 
         let outputs = apply_duplicate_suffixes(entries)
             .iter()
-            .map(|entry| entry.output_path.file_name().unwrap().to_string_lossy().to_string())
+            .map(|entry| {
+                entry
+                    .output_path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect::<Vec<_>>();
 
         assert_eq!(outputs, vec!["input-Out.pdf", "input-out-2.pdf"]);
@@ -412,6 +460,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_extract_probe(dir.path(), 3, true));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,
@@ -462,6 +511,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_extract_probe(dir.path(), 2, true));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,
@@ -490,6 +540,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_invalid_pdf_qpdf_probe(dir.path(), &json_marker));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: true,
             quiet: false,
             verbose: false,
@@ -521,9 +572,15 @@ mod tests {
         let log_path = dir.path().join("extract.log");
         fs::write(&input, b"pdf").expect("input file should exist");
 
-        let qpdf = QpdfRunner::new(create_extract_probe_with_log(dir.path(), 5, &log_path, true));
+        let qpdf = QpdfRunner::new(create_extract_probe_with_log(
+            dir.path(),
+            5,
+            &log_path,
+            true,
+        ));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,

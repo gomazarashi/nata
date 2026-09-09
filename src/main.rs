@@ -5,8 +5,11 @@ mod extract;
 mod io_support;
 mod merge;
 mod page_spec;
+mod pdftoppm_detector;
+mod pdftoppm_runner;
 mod qpdf_detector;
 mod qpdf_runner;
+mod render;
 mod split;
 mod strict;
 #[cfg(test)]
@@ -19,6 +22,7 @@ use crate::cli::Cli;
 use crate::cli::Commands;
 use crate::error::AppError;
 use crate::exit_code::ExitCode;
+use crate::pdftoppm_runner::PdftoppmRunner;
 use crate::qpdf_runner::QpdfRunner;
 
 fn main() {
@@ -58,6 +62,16 @@ fn try_run(cli: Cli) -> Result<(), AppError> {
     match cli.command {
         Commands::Merge(args) => merge::run(args, &cli.common, &qpdf),
         Commands::Extract(args) => extract::run(args, &cli.common, &qpdf),
+        Commands::Render(args) => {
+            let pdftoppm_path = pdftoppm_detector::detect(cli.common.pdftoppm.as_deref())?;
+            let pdftoppm = PdftoppmRunner::new(pdftoppm_path.clone());
+
+            if cli.common.verbose && !cli.common.quiet {
+                eprintln!("info: using pdftoppm at {}", pdftoppm_path.display());
+            }
+
+            render::run(args, &cli.common, &qpdf, &pdftoppm)
+        }
         Commands::Split(args) => split::run(args, &cli.common, &qpdf),
     }
 }

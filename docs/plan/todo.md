@@ -255,6 +255,26 @@
   - `--ranges 1-2 --ranges 3-last`
   - 既存出力衝突で終了コード`3`
 
+## `render`
+
+- [x] CLIを具体化する
+  - CLI: `nata render <input> [--pages <pages>] -d <output-dir> [--dpi <n>]`
+  - `--pages` 省略時は `all`
+  - `--dpi` の既定値は `150`
+- [x] `pdftoppm` 検出を実装する
+  - 優先順は `--pdftoppm` → `NATA_PDFTOPPM` → `PATH`
+- [x] 出力計画を実装する
+  - 出力ファイル名は `<input-stem>-<page>.png`
+  - 同名衝突時は `-2`, `-3` suffix を付ける
+- [x] `pdftoppm` 呼び出しを実装する
+  - 1ページずつ PNG 化する
+  - 成功時のみ正式出力へ確定する
+- [x] 単体テストを追加する
+  - `--dpi 0` 禁止
+  - 重複ページ出力
+  - 既存出力衝突
+  - `pdftoppm` 失敗時のクリーンアップ
+
 ## 公開準備
 
 - [ ] 依存関係のライセンスを洗い出す

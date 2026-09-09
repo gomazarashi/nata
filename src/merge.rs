@@ -74,6 +74,7 @@ mod tests {
         };
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: false,
             quiet: false,
             verbose: false,
@@ -111,6 +112,7 @@ mod tests {
         let qpdf = QpdfRunner::new(create_invalid_pdf_qpdf_probe(dir.path(), &json_marker));
         let common = CommonOptions {
             qpdf: None,
+            pdftoppm: None,
             strict: true,
             quiet: false,
             verbose: false,

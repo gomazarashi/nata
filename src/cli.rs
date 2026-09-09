@@ -17,6 +17,9 @@ pub struct CommonOptions {
     #[arg(long, value_name = "path", global = true)]
     pub qpdf: Option<PathBuf>,
 
+    #[arg(long, value_name = "path", global = true)]
+    pub pdftoppm: Option<PathBuf>,
+
     #[arg(long, global = true)]
     pub strict: bool,
 
@@ -31,6 +34,7 @@ pub struct CommonOptions {
 pub enum Commands {
     Merge(MergeArgs),
     Extract(ExtractArgs),
+    Render(RenderArgs),
     Split(SplitArgs),
 }
 
@@ -55,6 +59,23 @@ pub struct ExtractArgs {
 
     #[arg(short = 'o', long, value_name = "file")]
     pub output: PathBuf,
+
+    #[arg(long)]
+    pub overwrite: bool,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct RenderArgs {
+    pub input: PathBuf,
+
+    #[arg(long, value_name = "pages", default_value = "all")]
+    pub pages: String,
+
+    #[arg(short = 'd', long = "output-dir", value_name = "dir")]
+    pub output_dir: PathBuf,
+
+    #[arg(long, value_name = "n", default_value_t = 150, value_parser = value_parser!(u32).range(1..))]
+    pub dpi: u32,
 
     #[arg(long)]
     pub overwrite: bool,
@@ -107,22 +128,27 @@ mod tests {
 
     #[test]
     fn parses_split_command() {
-        let cli = Cli::try_parse_from([
-            "nata",
-            "split",
-            "in.pdf",
-            "--every",
-            "2",
-            "-d",
-            "out",
-        ])
-        .expect("cli should parse");
+        let cli = Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "2", "-d", "out"])
+            .expect("cli should parse");
 
         let Commands::Split(args) = cli.command else {
             panic!("split command should parse");
         };
         assert_eq!(args.every, Some(2));
         assert_eq!(args.output_dir, PathBuf::from("out"));
+    }
+
+    #[test]
+    fn parses_render_command_with_defaults() {
+        let cli = Cli::try_parse_from(["nata", "render", "in.pdf", "-d", "out"])
+            .expect("cli should parse");
+
+        let Commands::Render(args) = cli.command else {
+            panic!("render command should parse");
+        };
+        assert_eq!(args.pages, "all");
+        assert_eq!(args.output_dir, PathBuf::from("out"));
+        assert_eq!(args.dpi, 150);
     }
 
     #[test]
@@ -146,8 +172,31 @@ mod tests {
     #[test]
     fn split_rejects_zero_every() {
         assert!(
-            Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "0", "-d", "out"])
-                .is_err()
+            Cli::try_parse_from(["nata", "split", "in.pdf", "--every", "0", "-d", "out"]).is_err()
         );
+    }
+
+    #[test]
+    fn render_rejects_zero_dpi() {
+        assert!(
+            Cli::try_parse_from(["nata", "render", "in.pdf", "-d", "out", "--dpi", "0"]).is_err()
+        );
+    }
+
+    #[test]
+    fn parses_global_pdftoppm_option() {
+        let cli = Cli::try_parse_from([
+            "nata",
+            "--pdftoppm",
+            "pdftoppm",
+            "render",
+            "in.pdf",
+            "-d",
+            "out",
+        ])
+        .expect("cli should parse");
+
+        assert_eq!(cli.common.pdftoppm, Some(PathBuf::from("pdftoppm")));
+        assert!(matches!(cli.command, Commands::Render(_)));
     }
 }

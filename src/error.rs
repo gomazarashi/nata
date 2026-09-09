@@ -23,6 +23,23 @@ pub enum AppError {
     #[error("error: qpdf command failed during {operation}: {detail}")]
     QpdfCommandFailed { operation: String, detail: String },
 
+    #[error(
+        "error: pdftoppm executable was not found\nhint: install pdftoppm and ensure it is available in PATH\nhint: or set NATA_PDFTOPPM=<path>\nhint: or pass --pdftoppm <path>"
+    )]
+    PdftoppmNotFound,
+
+    #[error("error: pdftoppm executable path is invalid: {path}")]
+    PdftoppmNotExecutable { path: PathBuf },
+
+    #[error("error: pdftoppm execution failed during {operation}: {source}")]
+    PdftoppmExecutionFailed {
+        operation: String,
+        source: std::io::Error,
+    },
+
+    #[error("error: pdftoppm command failed during {operation}: {detail}")]
+    PdftoppmCommandFailed { operation: String, detail: String },
+
     #[error("error: merge requires at least two input PDFs")]
     MergeRequiresAtLeastTwoInputs,
 
@@ -96,7 +113,11 @@ impl AppError {
             Self::QpdfNotFound
             | Self::QpdfNotExecutable { .. }
             | Self::QpdfExecutionFailed { .. }
-            | Self::QpdfCommandFailed { .. } => ExitCode::BackendError,
+            | Self::QpdfCommandFailed { .. }
+            | Self::PdftoppmNotFound
+            | Self::PdftoppmNotExecutable { .. }
+            | Self::PdftoppmExecutionFailed { .. }
+            | Self::PdftoppmCommandFailed { .. } => ExitCode::BackendError,
             Self::InputPdfNotFound { .. }
             | Self::InputPdfNotFile { .. }
             | Self::InputPdfInvalid { .. } => ExitCode::InputPdfError,

@@ -14,13 +14,14 @@ PDF の内容を再レンダリングするのではなく、既存 PDF のペ�
 nata <command> [options]
 ```
 
-`nata` は PDF 処理バックエンドとして `qpdf` を利用します。  
-`qpdf` は同梱せず、ユーザー環境にインストール済みのものを使用します。
+`nata` は PDF 再構成に `qpdf`、PNG 描画に `pdftoppm` を利用します。  
+これらは同梱せず、ユーザー環境にインストール済みのものを使用します。
 
 ## 現在使えるコマンド
 
 - `merge`: 複数の PDF を結合する
 - `extract`: 指定ページを取り出す
+- `render`: 指定ページを PNG に変換する
 - `split`: PDF を複数ファイルに分割する
 
 ## 今後追加予定のコマンド
@@ -48,6 +49,7 @@ nata <command> [options]
 - `--quiet`: 通常メッセージを抑制する
 - `--verbose`: 詳細ログを出力する
 - `--qpdf <path>`: 使用する `qpdf` のパスを明示する
+- `--pdftoppm <path>`: 使用する `pdftoppm` のパスを明示する
 - `--strict`: 維持保証できない文書レベル情報を検出した場合に処理を停止する
 
 ## ページ指定
@@ -91,6 +93,29 @@ nata split input.pdf --every 2 -d out
 nata split input.pdf --ranges 1-2 --ranges 3-last -d out
 ```
 
+## `render`
+
+`render` は次の形式を受け付けます。
+
+```bash
+nata render <input> [--pages <pages>] -d <output-dir> [--dpi <n>]
+```
+
+- `--pages` 省略時は `all` を使います
+- `--pages` では `odd` / `even` を許可します
+- `--dpi` の既定値は `150` です
+- 出力ファイル名は `<input-stem>-<page>.png` を基本とします
+- 同名が発生した場合は `-2`, `-3` の suffix を付けます
+- 出力ディレクトリが存在しない場合は自動作成します
+
+例:
+
+```bash
+nata render input.pdf -d out
+nata render input.pdf --pages 1,3,last -d out
+nata render input.pdf --pages odd -d out --dpi 200
+```
+
 ## strict モード
 
 - `--strict` 指定時は、入力 PDF の文書レベル情報を `qpdf --json` で検査します
@@ -110,6 +135,7 @@ nata split input.pdf --ranges 1-2 --ranges 3-last -d out
 ### strict モードの扱い
 
 - `merge` と `extract` と `split` で有効です
+- `render` は `--strict` を受け付けますが、描画結果で文書レベル情報を保持する機能ではないため事前検査は行いません
 - `--strict` 未指定時は、これらの情報があっても通常どおり処理を続行します
 - 判定は入力 PDF に対してのみ行い、出力後 PDF の差分比較までは行いません
 
